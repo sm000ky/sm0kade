@@ -4,6 +4,7 @@ import { CARTRIDGES, getCartridgeById } from '../games/registry';
 import { CartridgeVaultModal } from './CartridgeVaultModal';
 import { ConsoleTunerModal } from './ConsoleTunerModal';
 import { InteractiveDossierScreen } from './InteractiveDossierScreen';
+import { ConsoleControls } from './ConsoleControls';
 import { CRTOverlay } from './CRTOverlay';
 import { ProjectNotification } from './ProjectNotification';
 import { Project } from '../types/project';
@@ -541,180 +542,13 @@ export const ArcadeCabinet: React.FC<ArcadeCabinetProps> = ({
           {/* ADAPTIVE CONTROLLER: Dynamically Morphs Shape Based on Chosen Preset */}
           
           {/* MOBILE CONTROLLER DECK */}
-          <div className="w-full pt-1.5 flex md:hidden items-center justify-between px-2 shrink-0">
-            {/* LEFT: Dynamic D-Pad (Cross, Disc, Separate, Diamond) */}
-            <div className="relative w-28 h-28 flex items-center justify-center">
-              {/* Outer Bezel (Rounds to square or disc based on preset) */}
-              <div
-                className={`absolute inset-0 bg-gradient-to-b from-[#2b2d42] to-[#12131c] p-1 shadow-md border border-gray-700/60 flex items-center justify-center ${
-                  preset.dpadShape === 'disc' || preset.dpadShape === 'separate'
-                    ? 'rounded-full'
-                    : preset.dpadShape === 'diamond'
-                    ? 'rounded-2xl rotate-45'
-                    : 'rounded-full'
-                }`}
-              >
-                <div className="w-full h-full bg-[#161724] rounded-full" />
-              </div>
-
-              {/* UP */}
-              <button
-                onTouchStart={(e) => { e.preventDefault(); handleDirButton('up', true); }}
-                onTouchEnd={(e) => { e.preventDefault(); handleDirButton('up', false); }}
-                onMouseDown={() => handleDirButton('up', true)}
-                onMouseUp={() => handleDirButton('up', false)}
-                className={`absolute top-0.5 w-9 h-9 bg-gradient-to-b ${preset.dpadBg} ${preset.dpadActiveBg} border-t border-x ${preset.dpadBorder} ${preset.dpadTextColor} flex items-center justify-center font-pixel text-[11px] shadow-sm active:scale-95 ${
-                  preset.dpadShape === 'separate'
-                    ? 'rounded-full'
-                    : preset.dpadShape === 'diamond'
-                    ? 'rounded-md'
-                    : 'rounded-t-md'
-                }`}
-                style={{ touchAction: 'none' }}
-              >
-                ▲
-              </button>
-
-              {/* DOWN */}
-              <button
-                onTouchStart={(e) => { e.preventDefault(); handleDirButton('down', true); }}
-                onTouchEnd={(e) => { e.preventDefault(); handleDirButton('down', false); }}
-                onMouseDown={() => handleDirButton('down', true)}
-                onMouseUp={() => handleDirButton('down', false)}
-                className={`absolute bottom-0.5 w-9 h-9 bg-gradient-to-b ${preset.dpadBg} ${preset.dpadActiveBg} border-b border-x ${preset.dpadBorder} ${preset.dpadTextColor} flex items-center justify-center font-pixel text-[11px] shadow-sm active:scale-95 ${
-                  preset.dpadShape === 'separate'
-                    ? 'rounded-full'
-                    : preset.dpadShape === 'diamond'
-                    ? 'rounded-md'
-                    : 'rounded-b-md'
-                }`}
-                style={{ touchAction: 'none' }}
-              >
-                ▼
-              </button>
-
-              {/* LEFT */}
-              <button
-                onTouchStart={(e) => { e.preventDefault(); handleDirButton('left', true); }}
-                onTouchEnd={(e) => { e.preventDefault(); handleDirButton('left', false); }}
-                onMouseDown={() => handleDirButton('left', true)}
-                onMouseUp={() => handleDirButton('left', false)}
-                className={`absolute left-0.5 w-9 h-9 bg-gradient-to-r ${preset.dpadBg} ${preset.dpadActiveBg} border-l border-y ${preset.dpadBorder} ${preset.dpadTextColor} flex items-center justify-center font-pixel text-[11px] shadow-sm active:scale-95 ${
-                  preset.dpadShape === 'separate'
-                    ? 'rounded-full'
-                    : preset.dpadShape === 'diamond'
-                    ? 'rounded-md'
-                    : 'rounded-l-md'
-                }`}
-                style={{ touchAction: 'none' }}
-              >
-                ◀
-              </button>
-
-              {/* RIGHT */}
-              <button
-                onTouchStart={(e) => { e.preventDefault(); handleDirButton('right', true); }}
-                onTouchEnd={(e) => { e.preventDefault(); handleDirButton('right', false); }}
-                onMouseDown={() => handleDirButton('right', true)}
-                onMouseUp={() => handleDirButton('right', false)}
-                className={`absolute right-0.5 w-9 h-9 bg-gradient-to-l ${preset.dpadBg} ${preset.dpadActiveBg} border-r border-y ${preset.dpadBorder} ${preset.dpadTextColor} flex items-center justify-center font-pixel text-[11px] shadow-sm active:scale-95 ${
-                  preset.dpadShape === 'separate'
-                    ? 'rounded-full'
-                    : preset.dpadShape === 'diamond'
-                    ? 'rounded-md'
-                    : 'rounded-r-md'
-                }`}
-                style={{ touchAction: 'none' }}
-              >
-                ▶
-              </button>
-
-              {/* Center Disc */}
-              <div className="absolute w-7 h-7 rounded-full bg-[#131420] border border-gray-600/40 pointer-events-none" />
-            </div>
-
-            {/* CENTER: SELECT & START Rubber Pill Buttons */}
-            <div className="flex flex-col items-center gap-3">
-              <div className="flex items-center gap-3">
-                <div className="flex flex-col items-center gap-1">
-                  <button
-                    onClick={handleNextCartridge}
-                    className="w-9 h-3.5 bg-[#25283d] active:bg-gray-400 rounded-full border border-gray-600 shadow-inner -rotate-25 active:scale-95 transition-transform"
-                    title="Switch to Next Cartridge"
-                  />
-                  <span className="text-[7px] font-pixel text-gray-500">SELECT</span>
-                </div>
-
-                <div className="flex flex-col items-center gap-1">
-                  <button
-                    onClick={handleResetGame}
-                    className="w-9 h-3.5 bg-[#25283d] active:bg-gray-400 rounded-full border border-gray-600 shadow-inner -rotate-25 active:scale-95 transition-transform"
-                    title="Restart Current Game"
-                  />
-                  <span className="text-[7px] font-pixel text-gray-500">START</span>
-                </div>
-              </div>
-
-              {/* Speaker Grille Slits */}
-              <div className="flex gap-1 opacity-40">
-                <div className="w-1 h-4 bg-black rounded-full" />
-                <div className="w-1 h-4 bg-black rounded-full" />
-                <div className="w-1 h-4 bg-black rounded-full" />
-                <div className="w-1 h-4 bg-black rounded-full" />
-              </div>
-            </div>
-
-            {/* RIGHT: Dynamic Action Buttons (Circle, Square, Diamond, Hexagon) */}
-            <div className="flex items-center gap-3 pr-1">
-              {/* BUTTON B */}
-              <div className="flex flex-col items-center gap-1 translate-y-3">
-                <button
-                  onTouchStart={(e) => { e.preventDefault(); handleActionButton('actionB', true); }}
-                  onTouchEnd={(e) => { e.preventDefault(); handleActionButton('actionB', false); }}
-                  onMouseDown={() => handleActionButton('actionB', true)}
-                  onMouseUp={() => handleActionButton('actionB', false)}
-                  className={`relative w-12 h-12 bg-gradient-to-b ${preset.btnBBg} border-2 ${preset.btnBBorder} ${preset.btnBText} shadow-md active:scale-90 active:translate-y-0.5 transition-all flex items-center justify-center font-pixel text-xs font-bold ${
-                    preset.buttonShape === 'square'
-                      ? 'rounded-xs'
-                      : preset.buttonShape === 'diamond'
-                      ? 'rotate-45 rounded-sm'
-                      : preset.buttonShape === 'hexagon'
-                      ? 'rounded-md scale-95'
-                      : 'rounded-full'
-                  }`}
-                  style={{ touchAction: 'none' }}
-                >
-                  <span className={preset.buttonShape === 'diamond' ? '-rotate-45' : ''}>B</span>
-                  <div className="absolute top-1 left-1.5 w-6 h-2 rounded-full bg-white/30 blur-[0.5px]" />
-                </button>
-                <span className="text-[8px] font-pixel text-gray-400">BOOST</span>
-              </div>
-
-              {/* BUTTON A */}
-              <div className="flex flex-col items-center gap-1 -translate-y-1">
-                <button
-                  onTouchStart={(e) => { e.preventDefault(); handleActionButton('actionA', true); }}
-                  onTouchEnd={(e) => { e.preventDefault(); handleActionButton('actionA', false); }}
-                  onMouseDown={() => handleActionButton('actionA', true)}
-                  onMouseUp={() => handleActionButton('actionA', false)}
-                  className={`relative w-13 h-13 bg-gradient-to-b ${preset.btnABg} border-2 ${preset.btnABorder} ${preset.btnAText} shadow-md active:scale-90 active:translate-y-0.5 transition-all flex items-center justify-center font-pixel text-sm font-bold ${
-                    preset.buttonShape === 'square'
-                      ? 'rounded-xs'
-                      : preset.buttonShape === 'diamond'
-                      ? 'rotate-45 rounded-sm'
-                      : preset.buttonShape === 'hexagon'
-                      ? 'rounded-md scale-95'
-                      : 'rounded-full'
-                  }`}
-                  style={{ touchAction: 'none' }}
-                >
-                  <span className={`drop-shadow-sm ${preset.buttonShape === 'diamond' ? '-rotate-45' : ''}`}>A</span>
-                  <div className="absolute top-1 left-2 w-7 h-2.5 rounded-full bg-white/35 blur-[0.5px]" />
-                </button>
-                <span className="text-[8px] font-pixel text-[#ff0055]">ACTION</span>
-              </div>
-            </div>
-          </div>
+          <ConsoleControls
+            preset={preset}
+            onDirTouch={handleDirButton}
+            onActionTouch={handleActionButton}
+            onSelect={handleNextCartridge}
+            onStart={handleResetGame}
+          />
 
           {/* DESKTOP KEYBOARD INSTRUCTION DECK */}
           <div className="w-full pt-2 hidden md:flex items-center justify-between px-3 text-gray-300 font-mono text-xs border-t border-gray-800/60 shrink-0">
