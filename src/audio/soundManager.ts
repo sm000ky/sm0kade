@@ -1,5 +1,5 @@
 // Procedural 8-bit Audio Synthesizer via Web Audio API (Zero external assets)
-// Enhanced for Android WebKit & iOS Safari mobile gesture unlocking
+// Enhanced with Mobile Haptic Feedback & Multi-voice Chiptune Engine
 
 class SoundManager {
   private ctx: AudioContext | null = null;
@@ -9,7 +9,6 @@ class SoundManager {
   private bgmTimeout: number | null = null;
 
   constructor() {
-    // Auto unlock on first user gesture anywhere on page
     if (typeof window !== 'undefined') {
       const unlock = () => {
         this.unlock();
@@ -19,6 +18,15 @@ class SoundManager {
       window.addEventListener('pointerdown', unlock, { passive: true, once: true });
       window.addEventListener('keydown', unlock, { passive: true, once: true });
     }
+  }
+
+  // Safe Haptic Feedback for Android Mobile
+  public vibrate(pattern: number | number[] = 15) {
+    try {
+      if (typeof navigator !== 'undefined' && 'vibrate' in navigator) {
+        navigator.vibrate(pattern);
+      }
+    } catch {}
   }
 
   public unlock() {
@@ -73,7 +81,6 @@ class SoundManager {
     return this.isMuted;
   }
 
-  // Safe tone generator using linear ramps (immune to WebKit exponentialRamp zero-value errors)
   private playTone(
     freq: number,
     type: OscillatorType = 'square',
@@ -107,28 +114,30 @@ class SoundManager {
     } catch {}
   }
 
-  // Mechanical arcade button click
+  // Microswitch click with tactile haptic
   public playSwitchClick() {
+    this.vibrate(10);
     this.playTone(180, 'triangle', 0.03, 50, 0.25);
   }
 
-  // Cartridge swap degauss sound
+  // Cartridge swap with deep haptic thud
   public playCartridgeSwap() {
+    this.vibrate([25, 40, 20]);
     this.playTone(80, 'sawtooth', 0.18, 260, 0.4);
     setTimeout(() => {
       this.playTone(1200, 'square', 0.05, 600, 0.3);
     }, 40);
   }
 
-  // Coin inserted chime
+  // Coin inserted chime with double haptic pulse
   public playCoin() {
+    this.vibrate([15, 30, 25]);
     if (this.isMuted) return;
     try {
       const ctx = this.ensureContext();
       if (!ctx || !this.masterGain) return;
       const now = ctx.currentTime;
 
-      // Note 1: B5 (987.77 Hz)
       const osc1 = ctx.createOscillator();
       const gain1 = ctx.createGain();
       osc1.type = 'square';
@@ -140,7 +149,6 @@ class SoundManager {
       osc1.start(now);
       osc1.stop(now + 0.13);
 
-      // Note 2: E6 (1318.51 Hz)
       const osc2 = ctx.createOscillator();
       const gain2 = ctx.createGain();
       osc2.type = 'square';
@@ -154,18 +162,17 @@ class SoundManager {
     } catch {}
   }
 
-  // Pacman Dot Eat (Waka)
   public playDot() {
     this.playTone(320, 'triangle', 0.05, 640, 0.28);
   }
 
-  // Power Pellet Eat
   public playPowerPellet() {
+    this.vibrate(30);
     this.playTone(340, 'sawtooth', 0.22, 880, 0.35);
   }
 
-  // Ghost Eat / Bonus Collect
   public playEatGhost(multiplier = 1) {
+    this.vibrate([20, 30, 25]);
     const base = 480 * Math.min(2.5, multiplier);
     this.playTone(base, 'square', 0.12, base * 1.5, 0.4);
     setTimeout(() => {
@@ -173,20 +180,20 @@ class SoundManager {
     }, 60);
   }
 
-  // Laser shoot
   public playLaser() {
+    this.vibrate(12);
     this.playTone(1050, 'sawtooth', 0.1, 140, 0.3);
   }
 
-  // Explosion
   public playExplosion() {
+    this.vibrate([40, 30, 60]);
     if (this.isMuted) return;
     try {
       const ctx = this.ensureContext();
       if (!ctx || !this.masterGain) return;
 
       const now = ctx.currentTime;
-      const bufferSize = Math.floor(ctx.sampleRate * 0.18);
+      const bufferSize = Math.floor(ctx.sampleRate * 0.2);
       const buffer = ctx.createBuffer(1, bufferSize, ctx.sampleRate);
       const data = buffer.getChannelData(0);
       for (let i = 0; i < bufferSize; i++) {
@@ -199,33 +206,33 @@ class SoundManager {
       const filter = ctx.createBiquadFilter();
       filter.type = 'lowpass';
       filter.frequency.setValueAtTime(800, now);
-      filter.frequency.linearRampToValueAtTime(60, now + 0.18);
+      filter.frequency.linearRampToValueAtTime(60, now + 0.2);
 
       const gain = ctx.createGain();
       gain.gain.setValueAtTime(0.45, now);
-      gain.gain.linearRampToValueAtTime(0, now + 0.18);
+      gain.gain.linearRampToValueAtTime(0, now + 0.2);
 
       noise.connect(filter);
       filter.connect(gain);
       gain.connect(this.masterGain);
 
       noise.start(now);
-      noise.stop(now + 0.19);
+      noise.stop(now + 0.21);
     } catch {}
   }
 
-  // Bounce (Breakout / Pong)
   public playBounce(pitchMultiplier = 1) {
+    this.vibrate(8);
     this.playTone(360 * pitchMultiplier, 'sine', 0.07, 180 * pitchMultiplier, 0.35);
   }
 
-  // Brick Smash
   public playBrickSmash() {
+    this.vibrate(15);
     this.playTone(620, 'square', 0.08, 300, 0.35);
   }
 
-  // Project Discovered Fanfare
   public playProjectDiscovered() {
+    this.vibrate([30, 40, 30, 40, 50]);
     if (this.isMuted) return;
     const notes = [523.25, 659.25, 783.99, 1046.50, 1318.51];
     notes.forEach((f, i) => {
@@ -235,8 +242,8 @@ class SoundManager {
     });
   }
 
-  // Game Over
   public playGameOver() {
+    this.vibrate([50, 60, 80]);
     if (this.isMuted) return;
     const notes = [440, 392, 349.23, 261.63, 196];
     notes.forEach((f, i) => {
@@ -246,20 +253,29 @@ class SoundManager {
     });
   }
 
-  // 8-bit Synth Chiptune BGM Loop
+  // 2-Voice Chiptune BGM (Bassline + Arpeggio Chords)
   public startBgm() {
     if (this.isMuted || this.bgmPlaying) return;
     this.ensureContext();
     this.bgmPlaying = true;
 
-    const bassline = [174.61, 207.65, 233.08, 261.63, 233.08, 207.65];
+    // Synthwave / Cyberpunk Progression (Fm - Ab - Bb - C)
+    const bassline = [174.61, 174.61, 207.65, 207.65, 233.08, 233.08, 261.63, 261.63];
+    const arpeggio = [523.25, 698.46, 880.00, 1046.50, 659.25, 783.99, 987.77, 1318.51];
     let step = 0;
 
     const playStep = () => {
       if (!this.bgmPlaying || this.isMuted) return;
-      this.playTone(bassline[step % bassline.length], 'triangle', 0.16, undefined, 0.15);
+      // Voice 1: Triangle Bass
+      this.playTone(bassline[step % bassline.length], 'triangle', 0.18, undefined, 0.16);
+      
+      // Voice 2: Arpeggio Lead (on alternating beats)
+      if (step % 2 === 0) {
+        this.playTone(arpeggio[(step / 2) % arpeggio.length], 'square', 0.1, undefined, 0.08);
+      }
+
       step++;
-      this.bgmTimeout = window.setTimeout(playStep, 220);
+      this.bgmTimeout = window.setTimeout(playStep, 180);
     };
 
     playStep();

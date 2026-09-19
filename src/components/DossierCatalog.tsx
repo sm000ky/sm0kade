@@ -1,6 +1,6 @@
 import React from 'react';
 import { Project } from '../types/project';
-import { ExternalLink, Github, Trophy, Terminal, Flame, Info } from 'lucide-react';
+import { ExternalLink, Github, Trophy, Terminal, Shield, ArrowLeft } from 'lucide-react';
 import { sounds } from '../audio/soundManager';
 
 interface DossierCatalogProps {
@@ -15,30 +15,35 @@ export const DossierCatalog: React.FC<DossierCatalogProps> = ({
   onBackToArcade
 }) => {
   return (
-    <div className="w-full max-w-4xl mx-auto px-4 py-6 font-mono text-gray-200 animate-fadeIn">
-      {/* Pilot Profile Banner */}
-      <div className="bg-[#0f111c] border-2 border-[#00f0ff] p-5 rounded-lg shadow-neon-cyan mb-8 relative overflow-hidden">
-        <div className="absolute top-0 right-0 w-32 h-32 bg-[#00f0ff]/5 rounded-full blur-2xl pointer-events-none" />
+    <div className="w-full max-w-4xl mx-auto px-4 py-6 font-mono text-gray-200 animate-fadeIn selection:bg-[#00f0ff] selection:text-black">
+      
+      {/* CLASSIFIED BIOS / PILOT DOSSIER BANNER */}
+      <div className="bg-[#0b0d18] border-2 border-[#00f0ff] p-5 rounded-xl shadow-neon-cyan mb-8 relative overflow-hidden">
+        {/* Corner Cyber Brackets */}
+        <div className="absolute top-2 left-2 text-[#00f0ff] font-pixel text-xs">┌─</div>
+        <div className="absolute top-2 right-2 text-[#00f0ff] font-pixel text-xs">─┐</div>
+        <div className="absolute bottom-2 left-2 text-[#00f0ff] font-pixel text-xs">└─</div>
+        <div className="absolute bottom-2 right-2 text-[#00f0ff] font-pixel text-xs">─┘</div>
 
         <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
           <div className="flex items-center gap-4">
-            <div className="w-16 h-16 rounded bg-[#181a29] border-2 border-[#ff007f] flex items-center justify-center font-pixel text-2xl shadow-neon-pink">
+            <div className="w-16 h-16 rounded-lg bg-[#141729] border-2 border-[#ff007f] flex items-center justify-center font-pixel text-2xl shadow-neon-pink">
               👾
             </div>
             <div>
               <div className="flex items-center gap-2">
                 <h1 className="text-xl md:text-2xl font-pixel text-white tracking-wider">
-                  sm000ky
+                  PILOT: sm000ky
                 </h1>
-                <span className="px-2 py-0.5 bg-[#ff007f]/20 text-[#ff007f] border border-[#ff007f]/40 rounded font-pixel text-[9px]">
-                  PILOT
+                <span className="px-2 py-0.5 bg-[#00f0ff]/20 text-[#00f0ff] border border-[#00f0ff]/40 rounded font-pixel text-[9px]">
+                  VERIFIED
                 </span>
               </div>
-              <p className="text-sm text-cyan-300 mt-1">
+              <p className="text-xs text-cyan-300 mt-1">
                 Creative Systems, Web Architectures & Tactical CLI Engines
               </p>
-              <div className="text-xs text-gray-400 mt-1">
-                Collaborative Cockpit with <span className="text-[#ff007f] font-semibold">Zero Two</span>
+              <div className="text-[11px] text-gray-400 mt-0.5">
+                Co-Pilot & Cockpit Partner: <span className="text-[#ff007f] font-semibold">Zero Two</span>
               </div>
             </div>
           </div>
@@ -51,7 +56,8 @@ export const DossierCatalog: React.FC<DossierCatalogProps> = ({
               }}
               className="px-3.5 py-2 bg-[#ffaa00] hover:bg-amber-400 text-black font-pixel text-xs rounded border border-amber-300 shadow-neon-amber transition-all flex items-center gap-2"
             >
-              <span>🕹️ BACK TO ARCADE</span>
+              <ArrowLeft size={14} />
+              <span>ARCADE CABINET</span>
             </button>
             <a
               href="https://github.com/sm000ky"
@@ -60,73 +66,73 @@ export const DossierCatalog: React.FC<DossierCatalogProps> = ({
               className="px-3.5 py-2 bg-[#1c1e2e] hover:bg-[#282b42] text-white font-pixel text-xs rounded border border-gray-600 transition-all flex items-center gap-2"
             >
               <Github size={14} />
-              <span>GITHUB PROFILE</span>
+              <span>GITHUB</span>
             </a>
           </div>
         </div>
 
-        {/* Tactical Stat Highlights */}
+        {/* Tactical Status Specs */}
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mt-6 pt-5 border-t border-[#232538] text-xs">
-          <div className="bg-[#090a12] p-2.5 rounded border border-[#1f2133]">
-            <div className="text-gray-400 font-pixel text-[9px]">CHALLENGE</div>
+          <div className="bg-[#07080f] p-2.5 rounded border border-[#1b1d2e]">
+            <div className="text-gray-400 font-pixel text-[8px]">PROTOCOL</div>
             <div className="text-[#00f0ff] font-pixel text-sm mt-1">1-DAY-1-PROJ</div>
           </div>
-          <div className="bg-[#090a12] p-2.5 rounded border border-[#1f2133]">
-            <div className="text-gray-400 font-pixel text-[9px]">RELEASES</div>
-            <div className="text-emerald-400 font-pixel text-sm mt-1">5 SHIPPED</div>
+          <div className="bg-[#07080f] p-2.5 rounded border border-[#1b1d2e]">
+            <div className="text-gray-400 font-pixel text-[8px]">SHIPPED</div>
+            <div className="text-emerald-400 font-pixel text-sm mt-1">5 DAYS ACTIVE</div>
           </div>
-          <div className="bg-[#090a12] p-2.5 rounded border border-[#1f2133]">
-            <div className="text-gray-400 font-pixel text-[9px]">ENGINE STACK</div>
-            <div className="text-amber-400 font-pixel text-sm mt-1">TS / PY / REACT</div>
+          <div className="bg-[#07080f] p-2.5 rounded border border-[#1b1d2e]">
+            <div className="text-gray-400 font-pixel text-[8px]">ARCADE ROMS</div>
+            <div className="text-amber-400 font-pixel text-sm mt-1">10 PLAYABLE</div>
           </div>
-          <div className="bg-[#090a12] p-2.5 rounded border border-[#1f2133]">
-            <div className="text-gray-400 font-pixel text-[9px]">DEPLOYMENT</div>
-            <div className="text-[#ff007f] font-pixel text-sm mt-1">100% VERIFIED</div>
+          <div className="bg-[#07080f] p-2.5 rounded border border-[#1b1d2e]">
+            <div className="text-gray-400 font-pixel text-[8px]">ARCHITECTURE</div>
+            <div className="text-[#ff007f] font-pixel text-sm mt-1">100% MODULAR</div>
           </div>
         </div>
       </div>
 
-      {/* Hall of Fame / High-Score Leaderboard */}
+      {/* HALL OF FAME HEADER */}
       <div className="mb-6 flex items-center justify-between">
         <div className="flex items-center gap-2">
           <Trophy className="text-amber-400" size={20} />
-          <h2 className="text-base font-pixel text-white tracking-wide">
-            PROJECT HALL OF FAME
+          <h2 className="text-sm md:text-base font-pixel text-white tracking-wide">
+            CLASSIFIED RELEASES // DAY 1 - 5
           </h2>
         </div>
-        <span className="text-xs text-gray-400 font-pixel">
-          TOP DEPLOYMENTS
+        <span className="text-[10px] text-gray-400 font-pixel">
+          AUTONOMOUS PILOT LOGS
         </span>
       </div>
 
-      {/* Projects List */}
+      {/* PROJECTS LIST */}
       <div className="space-y-4">
         {projects.map((proj) => (
           <div
             key={proj.id}
-            className="bg-[#0d0f1a] hover:bg-[#121422] border-2 border-[#24263a] hover:border-[#00f0ff] transition-all p-4 rounded-lg flex flex-col md:flex-row items-start md:items-center justify-between gap-4 group"
+            className="bg-[#0d0f1a] hover:bg-[#121422] border-2 border-[#24263a] hover:border-[#00f0ff] transition-all p-4 rounded-xl flex flex-col md:flex-row items-start md:items-center justify-between gap-4 group"
           >
-            {/* Left: Rank & Title */}
+            {/* Left Info */}
             <div className="flex items-start gap-4">
-              <div className="w-12 h-12 bg-[#161826] border border-[#2d3047] group-hover:border-[#00f0ff] rounded flex flex-col items-center justify-center shrink-0">
-                <span className="text-[9px] font-pixel text-gray-400">RANK</span>
+              <div className="w-12 h-12 bg-[#161826] border border-[#2d3047] group-hover:border-[#00f0ff] rounded-lg flex flex-col items-center justify-center shrink-0">
+                <span className="text-[8px] font-pixel text-gray-500">RANK</span>
                 <span className="text-base font-pixel text-[#ffea00]">{proj.rank}</span>
               </div>
 
               <div>
                 <div className="flex flex-wrap items-center gap-2">
-                  <span className="font-pixel text-xs px-2 py-0.5 bg-[#00f0ff]/10 text-[#00f0ff] border border-[#00f0ff]/30 rounded">
+                  <span className="font-pixel text-[10px] px-2 py-0.5 bg-[#00f0ff]/10 text-[#00f0ff] border border-[#00f0ff]/30 rounded">
                     DAY {proj.day}
                   </span>
                   <h3 className="font-pixel text-sm text-white group-hover:text-[#00f0ff] transition-colors">
                     {proj.title}
                   </h3>
-                  <span className="text-xs px-2 py-0.5 bg-gray-800 text-gray-300 rounded">
+                  <span className="text-[10px] px-2 py-0.5 bg-gray-800 text-gray-300 rounded font-mono">
                     {proj.category}
                   </span>
                 </div>
 
-                <p className="text-xs text-gray-300 mt-1.5 line-clamp-2">
+                <p className="text-xs text-gray-300 mt-1.5 leading-relaxed">
                   {proj.tagline}
                 </p>
 
@@ -144,7 +150,7 @@ export const DossierCatalog: React.FC<DossierCatalogProps> = ({
               </div>
             </div>
 
-            {/* Right: Actions */}
+            {/* Right Actions */}
             <div className="flex items-center gap-2 self-end md:self-center shrink-0 pt-2 md:pt-0">
               <button
                 onClick={() => {
@@ -153,7 +159,7 @@ export const DossierCatalog: React.FC<DossierCatalogProps> = ({
                 }}
                 className="px-3 py-1.5 bg-[#1a1c2d] hover:bg-[#25283e] text-[#00f0ff] border border-[#00f0ff]/40 rounded font-pixel text-[10px] flex items-center gap-1.5 transition-colors"
               >
-                <Info size={12} />
+                <Terminal size={12} />
                 <span>INSPECT</span>
               </button>
 
@@ -162,7 +168,7 @@ export const DossierCatalog: React.FC<DossierCatalogProps> = ({
                   href={proj.liveUrl}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="px-3 py-1.5 bg-[#00f0ff] hover:bg-[#38f2ff] text-black rounded font-pixel text-[10px] flex items-center gap-1.5 shadow-neon-cyan transition-colors"
+                  className="px-3 py-1.5 bg-[#00f0ff] hover:bg-[#38f2ff] text-black font-bold rounded font-pixel text-[10px] flex items-center gap-1.5 shadow-neon-cyan transition-colors"
                 >
                   <span>LIVE</span>
                   <ExternalLink size={12} />
@@ -183,10 +189,10 @@ export const DossierCatalog: React.FC<DossierCatalogProps> = ({
         ))}
       </div>
 
-      {/* Footer Note */}
+      {/* FOOTER */}
       <div className="mt-12 text-center text-xs text-gray-500 font-mono py-4 border-t border-[#1f2133]">
         <p>Sm0kade System // Crafted by <span className="text-gray-300 font-semibold">sm000ky</span> × <span className="text-[#ff007f] font-semibold">Zero Two</span></p>
-        <p className="text-[10px] text-gray-600 mt-1">Autonomous multi-cartridge living portfolio engine</p>
+        <p className="text-[10px] text-gray-600 mt-1">Autonomous 10-in-1 multi-cartridge living portfolio engine</p>
       </div>
     </div>
   );

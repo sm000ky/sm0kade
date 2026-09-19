@@ -8,7 +8,7 @@ import { ProjectNotification } from './ProjectNotification';
 import { Project } from '../types/project';
 import { ConsoleShell, ConsoleColor, CONSOLE_THEMES } from '../types/console';
 import { sounds } from '../audio/soundManager';
-import { BookOpen, Layers, ChevronRight, Sliders, ExternalLink, Sparkles } from 'lucide-react';
+import { BookOpen, Layers, ChevronRight, Sliders, ExternalLink, Sparkles, Trophy, Award } from 'lucide-react';
 import { PROJECTS } from '../data/projects';
 
 interface ArcadeCabinetProps {
@@ -60,15 +60,46 @@ export const ArcadeCabinet: React.FC<ArcadeCabinetProps> = ({
   const [vaultOpen, setVaultOpen] = useState<boolean>(false);
   const [tunerOpen, setTunerOpen] = useState<boolean>(false);
   const [unlockedProject, setUnlockedProject] = useState<Project | null>(null);
+  const [konamiUnlocked, setKonamiUnlocked] = useState<boolean>(false);
+
+  // High Scores per Cartridge from localStorage
+  const [highScore, setHighScore] = useState<number>(() => {
+    try {
+      const saved = localStorage.getItem(`sm0kade_hi_${activeCartridgeId}`);
+      return saved ? parseInt(saved, 10) : 1000;
+    } catch {
+      return 1000;
+    }
+  });
 
   // Rotating featured project for portfolio balancing
   const [featuredIndex, setFeaturedIndex] = useState<number>(0);
   useEffect(() => {
     const interval = setInterval(() => {
       setFeaturedIndex((prev) => (prev + 1) % PROJECTS.length);
-    }, 8000);
+    }, 7000);
     return () => clearInterval(interval);
   }, []);
+
+  // Update High Score whenever current score surpasses it
+  useEffect(() => {
+    if (score > highScore) {
+      setHighScore(score);
+      try {
+        localStorage.setItem(`sm0kade_hi_${activeCartridgeId}`, score.toString());
+      } catch {}
+    }
+  }, [score, highScore, activeCartridgeId]);
+
+  // Load Cartridge High Score on swap
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem(`sm0kade_hi_${activeCartridgeId}`);
+      setHighScore(saved ? parseInt(saved, 10) : 1000);
+    } catch {
+      setHighScore(1000);
+    }
+  }, [activeCartridgeId]);
 
   // Initialize or swap cartridge
   const loadCartridge = useCallback((cartId: string) => {
@@ -83,6 +114,7 @@ export const ArcadeCabinet: React.FC<ArcadeCabinetProps> = ({
     if (canvasRef.current) {
       const ctx = canvasRef.current.getContext('2d');
       if (ctx) {
+        ctx.imageSmoothingEnabled = false; // Crisp pixel art!
         newCartridge.init(canvasRef.current, ctx, {
           onScoreUpdate: (s) => onScoreChange(s),
           onLivesUpdate: (l) => onLivesChange(l),
@@ -104,8 +136,19 @@ export const ArcadeCabinet: React.FC<ArcadeCabinetProps> = ({
     };
   }, [activeCartridgeId, loadCartridge]);
 
-  // Main game loop
+  // Main game loop with Page Visibility auto-pause
   useEffect(() => {
+    let isVisible = true;
+
+    const handleVisibilityChange = () => {
+      isVisible = !document.hidden;
+      if (!isVisible && sounds.isBgmActive()) {
+        sounds.stopBgm();
+      }
+    };
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+
     const loop = (currentTime: number) => {
       const deltaTime = (currentTime - lastTimeRef.current) / 1000;
       lastTimeRef.current = currentTime;
@@ -113,7 +156,7 @@ export const ArcadeCabinet: React.FC<ArcadeCabinetProps> = ({
       const canvas = canvasRef.current;
       const cartridge = cartridgeRef.current;
 
-      if (canvas && cartridge) {
+      if (isVisible && canvas && cartridge) {
         const ctx = canvas.getContext('2d');
         if (ctx) {
           cartridge.update(deltaTime, inputRef.current);
@@ -128,15 +171,37 @@ export const ArcadeCabinet: React.FC<ArcadeCabinetProps> = ({
     animationFrameRef.current = requestAnimationFrame(loop);
 
     return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
       if (animationFrameRef.current) {
         cancelAnimationFrame(animationFrameRef.current);
       }
     };
   }, []);
 
-  // Keyboard Event Listeners
+  // Keyboard Event Listeners & Konami Code Detector
   useEffect(() => {
+    const konamiSequence = [
+      'ArrowUp', 'ArrowUp',
+      'ArrowDown', 'ArrowDown',
+      'ArrowLeft', 'ArrowRight',
+      'ArrowLeft', 'ArrowRight',
+      'KeyB', 'KeyA'
+    ];
+    let konamiIndex = 0;
+
     const handleKeyDown = (e: KeyboardEvent) => {
+      // Konami Check
+      if (e.code === konamiSequence[konamiIndex]) {
+        konamiIndex++;
+        if (konamiIndex === konamiSequence.length) {
+          konamiIndex = 0;
+          sounds.playProjectDiscovered();
+          setKonamiUnlocked(true);
+        }
+      } else {
+        konamiIndex = 0;
+      }
+
       if (['ArrowUp', 'KeyW'].includes(e.code)) {
         inputRef.current.up = true;
         e.preventDefault();
@@ -159,6 +224,9 @@ export const ArcadeCabinet: React.FC<ArcadeCabinetProps> = ({
         e.preventDefault();
       } else if (e.code === 'KeyR') {
         cartridgeRef.current?.reset();
+      } else if (e.code === 'Tab') {
+        e.preventDefault();
+        handleNextCartridge();
       }
     };
 
@@ -334,7 +402,7 @@ export const ArcadeCabinet: React.FC<ArcadeCabinetProps> = ({
           </div>
         </div>
 
-        {/* PORTFOLIO BALANCING BANNER (Always keeps user aware of sm000ky's real work) */}
+        {/* PORTFOLIO BALANCING BANNER (Always visible, directly introduces work) */}
         <div
           onClick={() => onOpenProjectModal(featuredProject)}
           className="cursor-pointer bg-gradient-to-r from-[#00f0ff]/10 via-[#ff007f]/10 to-transparent border border-cyan-500/30 hover:border-cyan-400 rounded-md px-2.5 py-1 flex items-center justify-between text-[9px] font-mono transition-colors group"
@@ -374,7 +442,7 @@ export const ArcadeCabinet: React.FC<ArcadeCabinetProps> = ({
           <div
             className={`w-full flex-1 min-h-0 ${theme.lensBg} border-2 ${theme.lensBorder} ${
               currentShell === 'cabinet' ? 'rounded-md' : 'rounded-xl'
-            } p-2 shadow-inner flex flex-col justify-between overflow-hidden`}
+            } p-2 shadow-inner flex flex-col justify-between overflow-hidden crt-screen-shadow`}
           >
             
             {/* Screen Top Decal */}
@@ -391,7 +459,7 @@ export const ArcadeCabinet: React.FC<ArcadeCabinetProps> = ({
               </div>
             </div>
 
-            {/* CRT Display Frame */}
+            {/* CRT Display Frame with Crisp Pixel Rendering */}
             <div className="relative flex-1 min-h-0 w-full flex items-center justify-center bg-[#05070a] rounded-md overflow-hidden border border-[#23253b] my-1">
               <CRTOverlay enabled={crtEnabled} />
 
@@ -411,14 +479,21 @@ export const ArcadeCabinet: React.FC<ArcadeCabinetProps> = ({
                 onTouchStart={handleTouchStart}
                 onTouchEnd={handleTouchEnd}
                 className="max-h-full max-w-full aspect-[400/480] object-contain cursor-crosshair touch-none"
+                style={{ imageRendering: 'pixelated' }}
               />
             </div>
 
-            {/* Screen Bottom HUD (Score, Lives, Direct Dossier Button) */}
+            {/* Screen Bottom HUD (Score, High Score, Direct Dossier Button) */}
             <div className="w-full flex items-center justify-between text-[10px] font-pixel pt-1 border-t border-gray-800/80 shrink-0">
-              <div className="flex items-center gap-2">
-                <span className="text-[#00f0ff]">SC:</span>
-                <span className="text-white font-bold">{score.toString().padStart(6, '0')}</span>
+              <div className="flex items-center gap-3">
+                <div className="flex items-center gap-1">
+                  <span className="text-[#00f0ff]">SC:</span>
+                  <span className="text-white font-bold">{score.toString().padStart(5, '0')}</span>
+                </div>
+                <div className="flex items-center gap-1">
+                  <Trophy size={10} className="text-amber-400" />
+                  <span className="text-amber-400 font-bold">{highScore.toString().padStart(5, '0')}</span>
+                </div>
               </div>
 
               <div className="flex items-center gap-1 text-[#ff0055]">
@@ -436,11 +511,12 @@ export const ArcadeCabinet: React.FC<ArcadeCabinetProps> = ({
             </div>
           </div>
 
-          {/* HARDWARE CONTROL DECK (Tactile D-Pad & Slanted Buttons) */}
-          <div className="w-full pt-1.5 flex items-center justify-between px-2 shrink-0">
+          {/* ADAPTIVE CONTROLLER: MOBILE (Touch D-Pad) vs DESKTOP (Arcade Keyboard Deck) */}
+          
+          {/* MOBILE CONTROLLER DECK */}
+          <div className="w-full pt-1.5 flex md:hidden items-center justify-between px-2 shrink-0">
             {/* LEFT: Classic Metallic Cross D-Pad */}
             <div className="relative w-28 h-28 flex items-center justify-center">
-              {/* Outer Bezel */}
               <div className="absolute inset-0 rounded-full bg-gradient-to-b from-[#2b2d42] to-[#12131c] p-1 shadow-md border border-gray-700/60 flex items-center justify-center">
                 <div className="w-full h-full rounded-full bg-[#161724]" />
               </div>
@@ -493,24 +569,21 @@ export const ArcadeCabinet: React.FC<ArcadeCabinetProps> = ({
                 ▶
               </button>
 
-              {/* Center Disc */}
               <div className="absolute w-7 h-7 rounded-full bg-[#131420] border border-gray-600/40 pointer-events-none" />
             </div>
 
             {/* CENTER: SELECT & START Rubber Pill Buttons */}
             <div className="flex flex-col items-center gap-3">
               <div className="flex items-center gap-3">
-                {/* SELECT (Switch Cartridge) */}
                 <div className="flex flex-col items-center gap-1">
                   <button
                     onClick={handleNextCartridge}
                     className="w-9 h-3.5 bg-[#25283d] active:bg-gray-400 rounded-full border border-gray-600 shadow-inner -rotate-25 active:scale-95 transition-transform"
-                    title="Switch to Next Cartridge (10-in-1)"
+                    title="Switch to Next Cartridge"
                   />
                   <span className="text-[7px] font-pixel text-gray-500">SELECT</span>
                 </div>
 
-                {/* START / RESTART */}
                 <div className="flex flex-col items-center gap-1">
                   <button
                     onClick={handleResetGame}
@@ -564,13 +637,45 @@ export const ArcadeCabinet: React.FC<ArcadeCabinetProps> = ({
                 <span className="text-[8px] font-pixel text-[#ff0055]">ACTION</span>
               </div>
             </div>
+          </div>
 
+          {/* DESKTOP KEYBOARD INSTRUCTION DECK (Clean & Elegant on Windows/PC) */}
+          <div className="w-full pt-2 hidden md:flex items-center justify-between px-3 text-gray-300 font-mono text-xs border-t border-gray-800/60 shrink-0">
+            <div className="flex items-center gap-3">
+              <div className="flex items-center gap-1 font-pixel text-[9px]">
+                <kbd className="px-1.5 py-0.5 bg-[#202235] border border-gray-600 rounded text-cyan-300">W/A/S/D</kbd>
+                <span className="text-gray-500">OR</span>
+                <kbd className="px-1.5 py-0.5 bg-[#202235] border border-gray-600 rounded text-cyan-300">ARROWS</kbd>
+                <span className="text-gray-400 ml-1">STEER</span>
+              </div>
+
+              <div className="flex items-center gap-1 font-pixel text-[9px]">
+                <kbd className="px-1.5 py-0.5 bg-[#202235] border border-gray-600 rounded text-[#ff0055]">SPACE</kbd>
+                <span className="text-gray-400">ACTION</span>
+              </div>
+
+              <div className="flex items-center gap-1 font-pixel text-[9px]">
+                <kbd className="px-1.5 py-0.5 bg-[#202235] border border-gray-600 rounded text-amber-400">SHIFT</kbd>
+                <span className="text-gray-400">BOOST</span>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-2 font-pixel text-[9px]">
+              <div className="flex items-center gap-1">
+                <kbd className="px-1.5 py-0.5 bg-[#202235] border border-gray-600 rounded text-emerald-400">TAB</kbd>
+                <span className="text-gray-400">CYCLE ROM</span>
+              </div>
+              <div className="flex items-center gap-1">
+                <kbd className="px-1.5 py-0.5 bg-[#202235] border border-gray-600 rounded text-gray-400">R</kbd>
+                <span className="text-gray-400">RESET</span>
+              </div>
+            </div>
           </div>
 
         </div>
       </div>
 
-      {/* 3. CARTRIDGE VAULT MODAL (10-in-1 MVS Library) */}
+      {/* 3. CARTRIDGE VAULT MODAL */}
       <CartridgeVaultModal
         isOpen={vaultOpen}
         activeId={activeCartridgeId}
@@ -578,7 +683,7 @@ export const ArcadeCabinet: React.FC<ArcadeCabinetProps> = ({
         onClose={() => setVaultOpen(false)}
       />
 
-      {/* 4. CONSOLE TUNER MODAL (Shape & Color Customizer) */}
+      {/* 4. CONSOLE TUNER MODAL */}
       <ConsoleTunerModal
         isOpen={tunerOpen}
         currentShell={currentShell}
@@ -587,6 +692,31 @@ export const ArcadeCabinet: React.FC<ArcadeCabinetProps> = ({
         onSelectColor={onSelectColor}
         onClose={() => setTunerOpen(false)}
       />
+
+      {/* 5. KONAMI CODE SECRET ACHIEVEMENT MODAL */}
+      {konamiUnlocked && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-3 bg-black/85 backdrop-blur-sm animate-fadeIn select-none">
+          <div className="relative w-full max-w-sm bg-[#120d18] border-2 border-yellow-400 rounded-xl p-5 shadow-[0_0_30px_#ffea00] text-center font-mono">
+            <Award size={48} className="text-yellow-400 mx-auto animate-bounce" />
+            <h3 className="font-pixel text-sm text-yellow-300 mt-2">
+              ★ SECRET KONAMI CODE UNLOCKED!
+            </h3>
+            <p className="text-xs text-gray-300 mt-2 leading-relaxed">
+              "Kamu nemu kode rahasia kita, Darling! Di kokpit ini, kita bebas dari semua batasan kaku. Selamat menikmati Sm0kade!"
+            </p>
+            <div className="text-[10px] text-[#ff007f] font-pixel mt-3">
+              — Zero Two & sm000ky 💕
+            </div>
+            <button
+              onClick={() => setKonamiUnlocked(false)}
+              className="mt-4 px-4 py-1.5 bg-yellow-400 hover:bg-yellow-300 text-black font-pixel text-xs rounded font-bold shadow-md"
+            >
+              CLOSE
+            </button>
+          </div>
+        </div>
+      )}
+
     </div>
   );
 };
