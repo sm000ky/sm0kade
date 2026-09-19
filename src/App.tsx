@@ -9,7 +9,7 @@ import { Project } from './types/project';
 import { sounds } from './audio/soundManager';
 import { Gamepad2, Layers } from 'lucide-react';
 
-import { ConsoleShell, ConsoleColor } from './types/console';
+import { ConsolePresetId } from './types/console';
 
 export const App: React.FC = () => {
   const [viewMode, setViewMode] = useState<'arcade' | 'dossier'>('arcade');
@@ -21,9 +21,8 @@ export const App: React.FC = () => {
   const [isMuted, setIsMuted] = useState<boolean>(false);
   const [selectedProject, setSelectedProject] = useState<Project | null>(null);
 
-  // Console Customizer State
-  const [currentShell, setCurrentShell] = useState<ConsoleShell>('handheld');
-  const [currentColor, setCurrentColor] = useState<ConsoleColor>('obsidian');
+  // Console Preset State (8 unique retro presets)
+  const [currentPresetId, setCurrentPresetId] = useState<ConsolePresetId>('zerotwo-franxx');
 
   const handleToggleMute = () => {
     const nextMute = sounds.toggleMute();
@@ -109,10 +108,8 @@ export const App: React.FC = () => {
             lives={lives}
             onOpenDossier={() => setViewMode('dossier')}
             onOpenProjectModal={setSelectedProject}
-            currentShell={currentShell}
-            currentColor={currentColor}
-            onSelectShell={setCurrentShell}
-            onSelectColor={setCurrentColor}
+            currentPresetId={currentPresetId}
+            onSelectPreset={setCurrentPresetId}
           />
         ) : (
           <DossierCatalog
