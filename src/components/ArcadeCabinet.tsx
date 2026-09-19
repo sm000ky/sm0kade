@@ -175,28 +175,75 @@ export const ArcadeCabinet: React.FC<ArcadeCabinetProps> = ({
     cartridgeRef.current?.reset();
   };
 
+  // Touch swipe support on Canvas for mobile
+  const touchStartRef = useRef<{ x: number; y: number } | null>(null);
+
+  const handleTouchStart = (e: React.TouchEvent) => {
+    if (e.touches.length > 0) {
+      touchStartRef.current = {
+        x: e.touches[0].clientX,
+        y: e.touches[0].clientY
+      };
+    }
+  };
+
+  const handleTouchEnd = (e: React.TouchEvent) => {
+    if (!touchStartRef.current || e.changedTouches.length === 0) return;
+    const dx = e.changedTouches[0].clientX - touchStartRef.current.x;
+    const dy = e.changedTouches[0].clientY - touchStartRef.current.y;
+    const threshold = 18;
+
+    if (Math.abs(dx) > Math.abs(dy) && Math.abs(dx) > threshold) {
+      if (dx > 0) {
+        inputRef.current = { ...inputRef.current, right: true, left: false, up: false, down: false };
+      } else {
+        inputRef.current = { ...inputRef.current, left: true, right: false, up: false, down: false };
+      }
+      setTimeout(() => {
+        inputRef.current.left = false;
+        inputRef.current.right = false;
+      }, 100);
+    } else if (Math.abs(dy) > threshold) {
+      if (dy > 0) {
+        inputRef.current = { ...inputRef.current, down: true, up: false, left: false, right: false };
+      } else {
+        inputRef.current = { ...inputRef.current, up: true, down: false, left: false, right: false };
+      }
+      setTimeout(() => {
+        inputRef.current.up = false;
+        inputRef.current.down = false;
+      }, 100);
+    } else {
+      // Tap on canvas fires Action A
+      cartridgeRef.current?.handleAction?.('actionA');
+    }
+    touchStartRef.current = null;
+  };
+
   const activeMeta = getCartridgeById(activeCartridgeId) || CARTRIDGES[0];
 
   return (
-    <div className="w-full flex flex-col items-center">
+    <div className="w-full h-full flex-1 flex flex-col justify-between items-center overflow-hidden select-none">
       {/* Cartridge Selection Slot */}
-      <CartridgeSelector
-        activeId={activeCartridgeId}
-        onSelectCartridge={onSelectCartridge}
-      />
+      <div className="w-full shrink-0">
+        <CartridgeSelector
+          activeId={activeCartridgeId}
+          onSelectCartridge={onSelectCartridge}
+        />
+      </div>
 
-      {/* Arcade Cabinet Screen Section */}
-      <div className="w-full max-w-2xl px-2 py-3">
+      {/* Arcade Cabinet Screen Section (Viewport Fitted) */}
+      <div className="flex-1 min-h-0 w-full max-w-xl px-2 py-1 flex flex-col justify-center items-center overflow-hidden">
         {/* Cabinet Housing / Bezel */}
-        <div className="relative bg-[#12131e] border-4 border-[#25283c] rounded-xl p-3 md:p-5 shadow-[0_0_30px_rgba(0,0,0,0.9)]">
+        <div className="relative bg-[#12131e] border-2 md:border-4 border-[#25283c] rounded-xl p-2 md:p-3 shadow-[0_0_30px_rgba(0,0,0,0.9)] w-full h-full max-h-full flex flex-col justify-between">
           {/* Bezel Screws & Aesthetics */}
-          <div className="absolute top-2 left-2 w-2 h-2 rounded-full bg-gray-600 border border-gray-400" />
-          <div className="absolute top-2 right-2 w-2 h-2 rounded-full bg-gray-600 border border-gray-400" />
-          <div className="absolute bottom-2 left-2 w-2 h-2 rounded-full bg-gray-600 border border-gray-400" />
-          <div className="absolute bottom-2 right-2 w-2 h-2 rounded-full bg-gray-600 border border-gray-400" />
+          <div className="absolute top-1.5 left-1.5 w-1.5 h-1.5 rounded-full bg-gray-600 border border-gray-400" />
+          <div className="absolute top-1.5 right-1.5 w-1.5 h-1.5 rounded-full bg-gray-600 border border-gray-400" />
+          <div className="absolute bottom-1.5 left-1.5 w-1.5 h-1.5 rounded-full bg-gray-600 border border-gray-400" />
+          <div className="absolute bottom-1.5 right-1.5 w-1.5 h-1.5 rounded-full bg-gray-600 border border-gray-400" />
 
           {/* CRT Screen Frame */}
-          <div className="relative bg-black rounded-lg overflow-hidden border-2 border-[#33364f] shadow-crt flex flex-col items-center">
+          <div className="relative bg-black rounded-lg overflow-hidden border-2 border-[#33364f] shadow-crt flex-1 min-h-0 w-full flex flex-col items-center justify-between">
             {/* CRT Screen Scanlines / Filter */}
             <CRTOverlay enabled={crtEnabled} />
 
@@ -211,13 +258,13 @@ export const ArcadeCabinet: React.FC<ArcadeCabinetProps> = ({
             />
 
             {/* Screen Top HUD (Inside CRT) */}
-            <div className="w-full bg-[#080910] border-b border-[#222438] px-3 py-1.5 flex items-center justify-between text-xs z-10 font-pixel">
-              <div className="flex items-center gap-2">
+            <div className="w-full bg-[#080910] border-b border-[#222438] px-2.5 py-1 flex items-center justify-between text-xs z-10 font-pixel shrink-0">
+              <div className="flex items-center gap-2 text-[10px]">
                 <span className="text-[#00f0ff]">SCORE:</span>
                 <span className="text-white">{score.toString().padStart(6, '0')}</span>
               </div>
 
-              <div className="flex items-center gap-3">
+              <div className="flex items-center gap-2 text-[10px]">
                 <div className="flex items-center gap-1">
                   <span className="text-gray-400">LIVES:</span>
                   <span className="text-[#ff0055] tracking-widest">
@@ -229,35 +276,37 @@ export const ArcadeCabinet: React.FC<ArcadeCabinetProps> = ({
                   className="text-gray-400 hover:text-white p-0.5 rounded"
                   title="Restart Current Game"
                 >
-                  <RotateCcw size={13} />
+                  <RotateCcw size={12} />
                 </button>
               </div>
             </div>
 
-            {/* Canvas Display */}
-            <div className="relative w-full aspect-[4/4.5] md:aspect-[4/3.8] max-h-[460px] flex items-center justify-center bg-[#05070a]">
+            {/* Canvas Display (Strictly contained, never overflows) */}
+            <div className="relative flex-1 min-h-0 w-full flex items-center justify-center bg-[#05070a] overflow-hidden">
               <canvas
                 ref={canvasRef}
                 width={400}
                 height={480}
-                className="w-full h-full object-contain cursor-crosshair"
+                onTouchStart={handleTouchStart}
+                onTouchEnd={handleTouchEnd}
+                className="max-h-full max-w-full aspect-[400/480] object-contain cursor-crosshair touch-none"
               />
             </div>
 
             {/* In-Screen Mode Switch Bar */}
-            <div className="w-full bg-[#090b14] border-t border-[#222438] p-2 flex items-center justify-between z-10">
-              <div className="flex items-center gap-2 text-[10px] font-pixel text-gray-400">
-                <span className="w-2 h-2 rounded-full bg-emerald-400 animate-ping" />
+            <div className="w-full bg-[#090b14] border-t border-[#222438] px-2 py-1 flex items-center justify-between z-10 shrink-0">
+              <div className="flex items-center gap-1.5 text-[9px] font-pixel text-gray-400">
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-ping" />
                 <span className="hidden sm:inline">LIVE PLAY</span>
               </div>
 
               <div className="flex items-center gap-2">
                 <button
                   onClick={onOpenDossier}
-                  className="px-3 py-1 bg-[#1a1c2d] hover:bg-[#25283e] text-[#00f0ff] border border-[#00f0ff]/50 rounded font-pixel text-[10px] flex items-center gap-1.5 transition-all shadow-neon-cyan"
+                  className="px-2.5 py-0.5 bg-[#1a1c2d] hover:bg-[#25283e] text-[#00f0ff] border border-[#00f0ff]/50 rounded font-pixel text-[9px] flex items-center gap-1 transition-all shadow-neon-cyan"
                 >
-                  <BookOpen size={12} />
-                  <span>VIEW DOSSIER / PORTFOLIO</span>
+                  <BookOpen size={11} />
+                  <span>DOSSIER</span>
                 </button>
               </div>
             </div>
@@ -266,11 +315,13 @@ export const ArcadeCabinet: React.FC<ArcadeCabinetProps> = ({
       </div>
 
       {/* Tactile Virtual Controls (Mobile friendly D-Pad / Buttons) */}
-      <VirtualControls
-        onInput={handleVirtualInput}
-        onActionClick={handleActionClick}
-        instructions={activeMeta.factory().instructions}
-      />
+      <div className="w-full shrink-0">
+        <VirtualControls
+          onInput={handleVirtualInput}
+          onActionClick={handleActionClick}
+          instructions={activeMeta.factory().instructions}
+        />
+      </div>
     </div>
   );
 };
