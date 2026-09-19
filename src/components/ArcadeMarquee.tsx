@@ -98,7 +98,7 @@ export const ArcadeMarquee: React.FC<ArcadeMarqueeProps> = ({
           <span className="text-gray-600">•</span>
           <span className="text-[#00f0ff]">DAY 5</span>
           <span className="text-gray-600">•</span>
-          <span className="text-emerald-400">3 ROMS LOADED</span>
+          <span className="text-emerald-400">10 ROMS LOADED</span>
         </div>
 
         {/* Right: Controls, BGM, & Coin Slot */}
