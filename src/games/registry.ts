@@ -5,12 +5,16 @@ import { BreakoutGame } from './breakout/BreakoutGame';
 import { SnakeGame } from './snake/SnakeGame';
 import { TetrisGame } from './tetris/TetrisGame';
 import { FlappyGame } from './flappy/FlappyGame';
+import { PongGame } from './pong/PongGame';
+import { AsteroidsGame } from './asteroids/AsteroidsGame';
+import { RacerGame } from './racer/RacerGame';
+import { MemoryGame } from './memory/MemoryGame';
 
 export const CARTRIDGES: CartridgeMetadata[] = [
   {
     id: 'pacman',
     title: 'DEV LABYRINTH',
-    subtitle: 'PAC-MAN // CODE HUNTER',
+    subtitle: 'CLASSIC PAC-MAN // TARGET AI',
     genre: 'Maze Action',
     themeColor: '#ffea00',
     icon: '🟡',
@@ -60,6 +64,42 @@ export const CARTRIDGES: CartridgeMetadata[] = [
     themeColor: '#ffaa00',
     icon: '🚀',
     factory: () => new FlappyGame()
+  },
+  {
+    id: 'pong',
+    title: 'CYBER PONG',
+    subtitle: '1972 TABLE TENNIS // AI DUEL',
+    genre: 'Paddle Duel',
+    themeColor: '#00f0ff',
+    icon: '🏓',
+    factory: () => new PongGame()
+  },
+  {
+    id: 'asteroids',
+    title: 'ASTRO ROCKS',
+    subtitle: '1979 VECTOR SHOOTER // INERTIA',
+    genre: 'Vector Space',
+    themeColor: '#ff007f',
+    icon: '☄️',
+    factory: () => new AsteroidsGame()
+  },
+  {
+    id: 'racer',
+    title: 'NEON RACER',
+    subtitle: '80s HIGHWAY // TRAFFIC DODGER',
+    genre: 'Highway Drift',
+    themeColor: '#ffaa00',
+    icon: '🏎️',
+    factory: () => new RacerGame()
+  },
+  {
+    id: 'memory',
+    title: 'MATRIX MEMORY',
+    subtitle: 'CYBER PATTERN // NEURAL RECALL',
+    genre: 'Pattern Recall',
+    themeColor: '#00ff66',
+    icon: '🧠',
+    factory: () => new MemoryGame()
   }
 ];
 

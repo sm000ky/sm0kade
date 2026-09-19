@@ -2,13 +2,13 @@ import { Cartridge, GameCallbacks, InputState } from '../types';
 import { sounds } from '../../audio/soundManager';
 import { PROJECTS } from '../../data/projects';
 
-// 19 cols x 21 rows
-// 0: Walkable Corridor
+// Authentic Arcade 19x22 Tile Map
+// 0: Walkable Path
 // 1: Wall
 // 2: Dot
 // 3: Power Pellet
-// 4: Ghost Gate
-const BASE_MAP: number[][] = [
+// 4: Ghost Pen Gate
+const PACMAN_MAP: number[][] = [
   [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1],
   [1,3,2,2,2,2,2,2,2,1,2,2,2,2,2,2,2,3,1],
   [1,2,1,1,2,1,1,1,2,1,2,1,1,1,2,1,1,2,1],
@@ -32,35 +32,32 @@ const BASE_MAP: number[][] = [
   [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1],
 ];
 
-interface TileEntity {
+interface Ghost {
   tileX: number;
   tileY: number;
   targetX: number;
   targetY: number;
-  progress: number; // 0 to 1
+  progress: number;
   dirX: number;
   dirY: number;
-  speed: number;
-}
-
-interface Ghost extends TileEntity {
   color: string;
   name: string;
   isFrightened: boolean;
   startX: number;
   startY: number;
+  personality: 'blinky' | 'pinky' | 'inky' | 'clyde';
 }
 
 export class PacmanGame implements Cartridge {
   id = 'pacman';
   title = 'DEV LABYRINTH';
-  subtitle = 'PAC-MAN ENGINE // CODE HUNTER';
+  subtitle = 'CLASSIC PAC-MAN // TARGET AI';
   genre = 'Maze Action';
   themeColor = '#ffea00';
   icon = '🟡';
   instructions = {
-    desktop: 'ARROW KEYS / WASD to move • Eat dots, avoid bugs, collect Floppy Disks!',
-    mobile: 'Swipe screen or use Virtual D-Pad • Tap A for speed boost'
+    desktop: 'ARROW KEYS / WASD to steer • Eat dots & power pellets!',
+    mobile: 'Swipe screen or use Virtual D-Pad • Tap [A] to boost'
   };
 
   private callbacks: GameCallbacks | null = null;
@@ -70,8 +67,8 @@ export class PacmanGame implements Cartridge {
   private isGameOver: boolean = false;
   private paused: boolean = false;
 
-  // Pacman State (Tile-Stepping Model)
-  private pacman: TileEntity = {
+  // Pacman Entity
+  private pacman = {
     tileX: 9,
     tileY: 16,
     targetX: 8,
@@ -79,19 +76,19 @@ export class PacmanGame implements Cartridge {
     progress: 0,
     dirX: -1,
     dirY: 0,
-    speed: 4.8 // tiles per second
+    speed: 5.0
   };
   private desiredDirX: number = -1;
   private desiredDirY: number = 0;
   private mouthAngle: number = 0.2;
   private mouthDir: number = 1;
 
-  // Ghosts
+  // Ghosts with Classic Targeting AI
   private ghosts: Ghost[] = [];
   private frightenedTimer: number = 0;
   private ghostStreak: number = 0;
 
-  // Floppy Project Item
+  // Floppy Project Shard
   private floppy: { active: boolean; x: number; y: number; projectIndex: number } = {
     active: false,
     x: 9,
@@ -115,7 +112,7 @@ export class PacmanGame implements Cartridge {
     this.totalDots = 0;
     this.ghostStreak = 0;
 
-    this.map = BASE_MAP.map((row) =>
+    this.map = PACMAN_MAP.map((row) =>
       row.map((cell) => {
         if (cell === 2 || cell === 3) this.totalDots++;
         return cell;
@@ -139,17 +136,17 @@ export class PacmanGame implements Cartridge {
       progress: 0,
       dirX: -1,
       dirY: 0,
-      speed: 4.8
+      speed: 5.0
     };
     this.desiredDirX = -1;
     this.desiredDirY = 0;
 
-    // 4 Ghosts placed at clear open corridor positions
+    // Classic 4 Ghosts with Distinct Personalities
     this.ghosts = [
-      { tileX: 9, tileY: 8, targetX: 8, targetY: 8, progress: 0, dirX: -1, dirY: 0, speed: 3.2, color: '#ff0033', name: '404', isFrightened: false, startX: 9, startY: 8 },
-      { tileX: 8, tileY: 8, targetX: 9, targetY: 8, progress: 0, dirX: 1, dirY: 0, speed: 3.0, color: '#ff69b4', name: 'LMK', isFrightened: false, startX: 8, startY: 8 },
-      { tileX: 10, tileY: 8, targetX: 11, targetY: 8, progress: 0, dirX: 1, dirY: 0, speed: 2.8, color: '#00ffff', name: 'MERGE', isFrightened: false, startX: 10, startY: 8 },
-      { tileX: 6, tileY: 8, targetX: 5, targetY: 8, progress: 0, dirX: -1, dirY: 0, speed: 2.6, color: '#ffaa00', name: 'SYNTAX', isFrightened: false, startX: 6, startY: 8 }
+      { tileX: 9, tileY: 8, targetX: 8, targetY: 8, progress: 0, dirX: -1, dirY: 0, color: '#ff0033', name: '404', isFrightened: false, startX: 9, startY: 8, personality: 'blinky' },
+      { tileX: 8, tileY: 8, targetX: 9, targetY: 8, progress: 0, dirX: 1, dirY: 0, color: '#ff69b4', name: 'LMK', isFrightened: false, startX: 8, startY: 8, personality: 'pinky' },
+      { tileX: 10, tileY: 8, targetX: 11, targetY: 8, progress: 0, dirX: 1, dirY: 0, color: '#00ffff', name: 'MERGE', isFrightened: false, startX: 10, startY: 8, personality: 'inky' },
+      { tileX: 6, tileY: 8, targetX: 5, targetY: 8, progress: 0, dirX: -1, dirY: 0, color: '#ffaa00', name: 'SYNTAX', isFrightened: false, startX: 6, startY: 8, personality: 'clyde' }
     ];
 
     this.floppy.active = false;
@@ -158,8 +155,7 @@ export class PacmanGame implements Cartridge {
   }
 
   private isTileWalkable(x: number, y: number): boolean {
-    // Tunnel wrap rows
-    if ((y === 8 || y === 10 || y === 12) && (x < 0 || x >= 19)) return true;
+    if ((y === 8 || y === 10 || y === 12) && (x < 0 || x >= 19)) return true; // wrap tunnel
     if (x < 0 || x >= 19 || y < 0 || y >= 21) return false;
     return this.map[y][x] !== 1;
   }
@@ -168,13 +164,13 @@ export class PacmanGame implements Cartridge {
     if (this.isGameOver || this.paused) return;
     const dt = Math.min(deltaTime, 0.05);
 
-    // 1. Capture desired input direction
+    // Direction input
     if (input.up) { this.desiredDirX = 0; this.desiredDirY = -1; }
     else if (input.down) { this.desiredDirX = 0; this.desiredDirY = 1; }
     else if (input.left) { this.desiredDirX = -1; this.desiredDirY = 0; }
     else if (input.right) { this.desiredDirX = 1; this.desiredDirY = 0; }
 
-    // 2. Chomp animation
+    // Mouth chomp
     this.mouthAngle += this.mouthDir * dt * 6;
     if (this.mouthAngle > 0.45) {
       this.mouthAngle = 0.45;
@@ -184,7 +180,7 @@ export class PacmanGame implements Cartridge {
       this.mouthDir = 1;
     }
 
-    // 3. Frightened timer
+    // Frightened timer
     if (this.frightenedTimer > 0) {
       this.frightenedTimer -= dt;
       if (this.frightenedTimer <= 0) {
@@ -194,16 +190,16 @@ export class PacmanGame implements Cartridge {
       }
     }
 
-    // 4. Update Pac-Man (Tile Engine)
+    // Step Pacman
     this.updatePacman(dt, input.actionA);
 
-    // 5. Update Ghosts (Tile Engine)
+    // Step Ghosts
     this.updateGhosts(dt);
 
-    // 6. Check Collisions
+    // Check Collisions
     this.checkCollisions();
 
-    // 7. Check Level Clear
+    // Check Win
     if (this.dotsEaten >= this.totalDots) {
       sounds.playProjectDiscovered();
       this.reset();
@@ -212,10 +208,9 @@ export class PacmanGame implements Cartridge {
 
   private updatePacman(dt: number, isBoosted: boolean) {
     const p = this.pacman;
-    const currentSpeed = isBoosted ? p.speed * 1.35 : p.speed;
+    const speed = isBoosted ? p.speed * 1.35 : p.speed;
 
-    // Instant 180-degree reversal check:
-    // If the user presses opposite to current movement, turn back immediately!
+    // Instant 180 reverse
     if (this.desiredDirX === -p.dirX && this.desiredDirY === -p.dirY && (p.dirX !== 0 || p.dirY !== 0)) {
       const tempX = p.tileX;
       const tempY = p.tileY;
@@ -228,20 +223,18 @@ export class PacmanGame implements Cartridge {
       p.progress = 1 - p.progress;
     }
 
-    // Advance progress towards target tile
-    p.progress += currentSpeed * dt;
+    p.progress += speed * dt;
 
     if (p.progress >= 1) {
-      // Arrived at target tile!
       p.tileX = p.targetX;
       p.tileY = p.targetY;
       p.progress = 0;
 
-      // Handle Tunnel Wrap
+      // Tunnel Wrap
       if (p.tileX < 0) p.tileX = 18;
       if (p.tileX > 18) p.tileX = 0;
 
-      // Check eating item on this tile
+      // Eat Tile
       if (p.tileX >= 0 && p.tileX < 19 && p.tileY >= 0 && p.tileY < 21) {
         const cell = this.map[p.tileY][p.tileX];
         if (cell === 2) {
@@ -279,8 +272,7 @@ export class PacmanGame implements Cartridge {
         }
       }
 
-      // Pick next target tile:
-      // First try desired direction:
+      // Next Target
       const desiredNextX = p.tileX + this.desiredDirX;
       const desiredNextY = p.tileY + this.desiredDirY;
 
@@ -290,15 +282,12 @@ export class PacmanGame implements Cartridge {
         p.dirX = this.desiredDirX;
         p.dirY = this.desiredDirY;
       } else {
-        // Try continuing in current direction:
         const contNextX = p.tileX + p.dirX;
         const contNextY = p.tileY + p.dirY;
-
         if ((p.dirX !== 0 || p.dirY !== 0) && this.isTileWalkable(contNextX, contNextY)) {
           p.targetX = contNextX;
           p.targetY = contNextY;
         } else {
-          // Wall ahead and no new direction: stop!
           p.targetX = p.tileX;
           p.targetY = p.tileY;
           p.dirX = 0;
@@ -310,7 +299,7 @@ export class PacmanGame implements Cartridge {
 
   private updateGhosts(dt: number) {
     for (const ghost of this.ghosts) {
-      const speed = ghost.isFrightened ? ghost.speed * 0.55 : ghost.speed;
+      const speed = ghost.isFrightened ? 2.2 : 3.4;
       ghost.progress += speed * dt;
 
       if (ghost.progress >= 1) {
@@ -318,11 +307,9 @@ export class PacmanGame implements Cartridge {
         ghost.tileY = ghost.targetY;
         ghost.progress = 0;
 
-        // Tunnel Wrap
         if (ghost.tileX < 0) ghost.tileX = 18;
         if (ghost.tileX > 18) ghost.tileX = 0;
 
-        // Find available neighbor tiles
         const neighbors = [
           { dx: 0, dy: -1 },
           { dx: 0, dy: 1 },
@@ -330,28 +317,46 @@ export class PacmanGame implements Cartridge {
           { dx: 1, dy: 0 }
         ];
 
-        // Filter out walls and the opposite direction (ghosts don't 180 unless dead-end)
-        const validNeighbors = neighbors.filter((n) => {
+        const validDirs = neighbors.filter((n) => {
           if (n.dx === -ghost.dirX && n.dy === -ghost.dirY) return false;
           return this.isTileWalkable(ghost.tileX + n.dx, ghost.tileY + n.dy);
         });
 
-        let chosen = validNeighbors[0];
+        let chosen = validDirs[0];
 
-        if (validNeighbors.length > 0) {
-          if (!ghost.isFrightened && Math.random() < 0.6) {
-            // Target Pac-Man
-            validNeighbors.sort((a, b) => {
-              const distA = Math.hypot(ghost.tileX + a.dx - this.pacman.tileX, ghost.tileY + a.dy - this.pacman.tileY);
-              const distB = Math.hypot(ghost.tileX + b.dx - this.pacman.tileX, ghost.tileY + b.dy - this.pacman.tileY);
+        if (validDirs.length > 0) {
+          if (ghost.isFrightened) {
+            // Random in frightened
+            chosen = validDirs[Math.floor(Math.random() * validDirs.length)];
+          } else {
+            // Calculate target tile according to classic Pac-Man AI
+            let targetTile = { x: this.pacman.tileX, y: this.pacman.tileY };
+
+            if (ghost.personality === 'blinky') {
+              // Direct chase
+              targetTile = { x: this.pacman.tileX, y: this.pacman.tileY };
+            } else if (ghost.personality === 'pinky') {
+              // Ambush 4 tiles ahead
+              targetTile = {
+                x: this.pacman.tileX + this.pacman.dirX * 4,
+                y: this.pacman.tileY + this.pacman.dirY * 4
+              };
+            } else if (ghost.personality === 'clyde') {
+              // Wander away if too close, else chase
+              const dist = Math.hypot(ghost.tileX - this.pacman.tileX, ghost.tileY - this.pacman.tileY);
+              if (dist < 5) {
+                targetTile = { x: 0, y: 20 }; // home corner
+              }
+            }
+
+            validDirs.sort((a, b) => {
+              const distA = Math.hypot(ghost.tileX + a.dx - targetTile.x, ghost.tileY + a.dy - targetTile.y);
+              const distB = Math.hypot(ghost.tileX + b.dx - targetTile.x, ghost.tileY + b.dy - targetTile.y);
               return distA - distB;
             });
-            chosen = validNeighbors[0];
-          } else {
-            chosen = validNeighbors[Math.floor(Math.random() * validNeighbors.length)];
+            chosen = validDirs[0];
           }
         } else {
-          // Dead end: reverse
           chosen = { dx: -ghost.dirX, dy: -ghost.dirY };
         }
 
@@ -364,7 +369,6 @@ export class PacmanGame implements Cartridge {
   }
 
   private checkCollisions() {
-    // Current interpolated positions
     const pacX = this.pacman.tileX + (this.pacman.targetX - this.pacman.tileX) * this.pacman.progress;
     const pacY = this.pacman.tileY + (this.pacman.targetY - this.pacman.tileY) * this.pacman.progress;
 
@@ -372,11 +376,8 @@ export class PacmanGame implements Cartridge {
       const gx = ghost.tileX + (ghost.targetX - ghost.tileX) * ghost.progress;
       const gy = ghost.tileY + (ghost.targetY - ghost.tileY) * ghost.progress;
 
-      const dist = Math.hypot(gx - pacX, gy - pacY);
-
-      if (dist < 0.75) {
+      if (Math.hypot(gx - pacX, gy - pacY) < 0.75) {
         if (ghost.isFrightened) {
-          // Eat Ghost!
           ghost.tileX = ghost.startX;
           ghost.tileY = ghost.startY;
           ghost.targetX = ghost.startX;
@@ -388,7 +389,6 @@ export class PacmanGame implements Cartridge {
           sounds.playEatGhost(this.ghostStreak);
           if (this.callbacks) this.callbacks.onScoreUpdate(this.score);
         } else {
-          // Pacman Dies!
           this.lives--;
           sounds.playExplosion();
           if (this.callbacks) this.callbacks.onLivesUpdate(this.lives);
@@ -419,7 +419,7 @@ export class PacmanGame implements Cartridge {
     ctx.save();
     ctx.translate(offsetX, offsetY);
 
-    // 1. Draw Maze Walls & Dots
+    // Maze
     for (let r = 0; r < rows; r++) {
       for (let c = 0; c < cols; c++) {
         const cell = this.map[r][c];
@@ -447,55 +447,48 @@ export class PacmanGame implements Cartridge {
       }
     }
 
-    // 2. Draw Floppy Project Pickup
+    // Floppy
     if (this.floppy.active) {
       const fx = this.floppy.x * cellSize + cellSize / 2;
       const fy = this.floppy.y * cellSize + cellSize / 2;
       const pulse = 1 + Math.sin(Date.now() * 0.01) * 0.15;
-
       ctx.save();
       ctx.translate(fx, fy);
       ctx.scale(pulse, pulse);
-
       ctx.fillStyle = '#00ff66';
       ctx.fillRect(-cellSize * 0.4, -cellSize * 0.4, cellSize * 0.8, cellSize * 0.8);
       ctx.fillStyle = '#ffffff';
       ctx.fillRect(-cellSize * 0.3, -cellSize * 0.3, cellSize * 0.6, cellSize * 0.35);
       ctx.fillStyle = '#111827';
       ctx.fillRect(-cellSize * 0.25, cellSize * 0.1, cellSize * 0.5, cellSize * 0.25);
-
       ctx.restore();
     }
 
-    // 3. Draw Pac-Man
+    // Pac-Man
     const pacX = (this.pacman.tileX + (this.pacman.targetX - this.pacman.tileX) * this.pacman.progress) * cellSize + cellSize / 2;
     const pacY = (this.pacman.tileY + (this.pacman.targetY - this.pacman.tileY) * this.pacman.progress) * cellSize + cellSize / 2;
 
-    let rotation = 0;
-    if (this.pacman.dirX === 1) rotation = 0;
-    else if (this.pacman.dirX === -1) rotation = Math.PI;
-    else if (this.pacman.dirY === -1) rotation = -Math.PI / 2;
-    else if (this.pacman.dirY === 1) rotation = Math.PI / 2;
+    let rot = 0;
+    if (this.pacman.dirX === 1) rot = 0;
+    else if (this.pacman.dirX === -1) rot = Math.PI;
+    else if (this.pacman.dirY === -1) rot = -Math.PI / 2;
+    else if (this.pacman.dirY === 1) rot = Math.PI / 2;
 
     ctx.save();
     ctx.translate(pacX, pacY);
-    ctx.rotate(rotation);
-
+    ctx.rotate(rot);
     ctx.fillStyle = '#ffea00';
     ctx.beginPath();
     ctx.arc(0, 0, cellSize * 0.42, this.mouthAngle * Math.PI, (2 - this.mouthAngle) * Math.PI);
     ctx.lineTo(0, 0);
     ctx.fill();
-
-    // Eye
     ctx.fillStyle = '#000000';
     ctx.beginPath();
     ctx.arc(cellSize * 0.1, -cellSize * 0.2, cellSize * 0.07, 0, Math.PI * 2);
     ctx.fill();
-
     ctx.restore();
 
-    // 4. Draw Ghosts
+    // Ghosts
     for (const ghost of this.ghosts) {
       const gx = (ghost.tileX + (ghost.targetX - ghost.tileX) * ghost.progress) * cellSize + cellSize / 2;
       const gy = (ghost.tileY + (ghost.targetY - ghost.tileY) * ghost.progress) * cellSize + cellSize / 2;
@@ -521,14 +514,12 @@ export class PacmanGame implements Cartridge {
       ctx.closePath();
       ctx.fill();
 
-      // Eyes
       ctx.fillStyle = '#ffffff';
       ctx.beginPath();
       ctx.arc(-r * 0.35, -r * 0.2, r * 0.28, 0, Math.PI * 2);
       ctx.arc(r * 0.35, -r * 0.2, r * 0.28, 0, Math.PI * 2);
       ctx.fill();
 
-      // Pupils
       ctx.fillStyle = ghost.isFrightened ? '#ff0000' : '#000088';
       const eyeDx = ghost.dirX * r * 0.12;
       const eyeDy = ghost.dirY * r * 0.12;

@@ -9,6 +9,8 @@ import { Project } from './types/project';
 import { sounds } from './audio/soundManager';
 import { Gamepad2, Layers } from 'lucide-react';
 
+import { ConsoleShell, ConsoleColor } from './types/console';
+
 export const App: React.FC = () => {
   const [viewMode, setViewMode] = useState<'arcade' | 'dossier'>('arcade');
   const [activeCartridgeId, setActiveCartridgeId] = useState<string>(CARTRIDGES[0].id);
@@ -18,6 +20,10 @@ export const App: React.FC = () => {
   const [crtEnabled, setCrtEnabled] = useState<boolean>(true);
   const [isMuted, setIsMuted] = useState<boolean>(false);
   const [selectedProject, setSelectedProject] = useState<Project | null>(null);
+
+  // Console Customizer State
+  const [currentShell, setCurrentShell] = useState<ConsoleShell>('handheld');
+  const [currentColor, setCurrentColor] = useState<ConsoleColor>('obsidian');
 
   const handleToggleMute = () => {
     const nextMute = sounds.toggleMute();
@@ -103,6 +109,10 @@ export const App: React.FC = () => {
             lives={lives}
             onOpenDossier={() => setViewMode('dossier')}
             onOpenProjectModal={setSelectedProject}
+            currentShell={currentShell}
+            currentColor={currentColor}
+            onSelectShell={setCurrentShell}
+            onSelectColor={setCurrentColor}
           />
         ) : (
           <DossierCatalog

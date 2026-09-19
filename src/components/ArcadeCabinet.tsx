@@ -2,11 +2,14 @@ import React, { useRef, useEffect, useState, useCallback } from 'react';
 import { Cartridge, InputState } from '../games/types';
 import { CARTRIDGES, getCartridgeById } from '../games/registry';
 import { CartridgeVaultModal } from './CartridgeVaultModal';
+import { ConsoleTunerModal } from './ConsoleTunerModal';
 import { CRTOverlay } from './CRTOverlay';
 import { ProjectNotification } from './ProjectNotification';
 import { Project } from '../types/project';
+import { ConsoleShell, ConsoleColor, CONSOLE_THEMES } from '../types/console';
 import { sounds } from '../audio/soundManager';
-import { BookOpen, Layers, ChevronRight } from 'lucide-react';
+import { BookOpen, Layers, ChevronRight, Sliders, ExternalLink, Sparkles } from 'lucide-react';
+import { PROJECTS } from '../data/projects';
 
 interface ArcadeCabinetProps {
   activeCartridgeId: string;
@@ -18,6 +21,10 @@ interface ArcadeCabinetProps {
   lives: number;
   onOpenDossier: () => void;
   onOpenProjectModal: (project: Project) => void;
+  currentShell: ConsoleShell;
+  currentColor: ConsoleColor;
+  onSelectShell: (shell: ConsoleShell) => void;
+  onSelectColor: (color: ConsoleColor) => void;
 }
 
 export const ArcadeCabinet: React.FC<ArcadeCabinetProps> = ({
@@ -29,7 +36,11 @@ export const ArcadeCabinet: React.FC<ArcadeCabinetProps> = ({
   score,
   lives,
   onOpenDossier,
-  onOpenProjectModal
+  onOpenProjectModal,
+  currentShell,
+  currentColor,
+  onSelectShell,
+  onSelectColor
 }) => {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const cartridgeRef = useRef<Cartridge | null>(null);
@@ -47,7 +58,17 @@ export const ArcadeCabinet: React.FC<ArcadeCabinetProps> = ({
   });
 
   const [vaultOpen, setVaultOpen] = useState<boolean>(false);
+  const [tunerOpen, setTunerOpen] = useState<boolean>(false);
   const [unlockedProject, setUnlockedProject] = useState<Project | null>(null);
+
+  // Rotating featured project for portfolio balancing
+  const [featuredIndex, setFeaturedIndex] = useState<number>(0);
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setFeaturedIndex((prev) => (prev + 1) % PROJECTS.length);
+    }, 8000);
+    return () => clearInterval(interval);
+  }, []);
 
   // Initialize or swap cartridge
   const loadCartridge = useCallback((cartId: string) => {
@@ -113,7 +134,7 @@ export const ArcadeCabinet: React.FC<ArcadeCabinetProps> = ({
     };
   }, []);
 
-  // Keyboard Event Listeners for PC
+  // Keyboard Event Listeners
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (['ArrowUp', 'KeyW'].includes(e.code)) {
@@ -241,84 +262,131 @@ export const ArcadeCabinet: React.FC<ArcadeCabinetProps> = ({
 
   const activeMeta = getCartridgeById(activeCartridgeId) || CARTRIDGES[0];
   const activeIndex = CARTRIDGES.findIndex((c) => c.id === activeCartridgeId);
+  const theme = CONSOLE_THEMES[currentColor];
+  const featuredProject = PROJECTS[featuredIndex];
 
   return (
     <div className="w-full h-full flex-1 flex flex-col justify-between items-center overflow-hidden select-none">
       
-      {/* 1. COMPACT SLEEK CARTRIDGE DOCK (Clean, No Clutter!) */}
-      <div className="w-full max-w-lg px-3 py-1.5 shrink-0">
-        <div className="bg-[#12131e] border border-[#272a42] rounded-lg px-2.5 py-1.5 flex items-center justify-between shadow-md">
-          {/* Active Cartridge Pill & Vault Trigger */}
+      {/* 1. TOP CARTRIDGE DOCK + PORTFOLIO SPOTLIGHT TICKER */}
+      <div className="w-full max-w-lg px-3 pt-1 shrink-0 space-y-1">
+        
+        {/* Cartridge Selector Bar */}
+        <div className="bg-[#10121d] border border-[#23263b] rounded-lg px-2.5 py-1 flex items-center justify-between shadow-sm">
+          {/* Active Cartridge Pill */}
           <button
             onClick={() => {
               sounds.playSwitchClick();
               setVaultOpen(true);
             }}
-            className="flex items-center gap-2 px-2.5 py-1 rounded bg-[#181a2b] hover:bg-[#20233b] border border-cyan-500/40 text-left transition-all group"
+            className="flex items-center gap-2 px-2 py-0.5 rounded bg-[#161929] hover:bg-[#1f2238] border border-cyan-500/30 text-left transition-all group"
           >
-            <span className="text-base group-hover:scale-110 transition-transform">
+            <span className="text-sm group-hover:scale-110 transition-transform">
               {activeMeta.icon}
             </span>
-            <div>
-              <div className="flex items-center gap-1.5">
-                <span className="text-[8px] font-pixel text-gray-500">
-                  SLOT {activeIndex + 1}/{CARTRIDGES.length}
-                </span>
-                <span
-                  className="text-[10px] font-pixel font-bold tracking-wide"
-                  style={{ color: activeMeta.themeColor }}
-                >
-                  {activeMeta.title}
-                </span>
-              </div>
-              <div className="text-[8px] text-gray-400 font-mono">
-                {activeMeta.genre} • Tap to switch
-              </div>
+            <div className="flex items-center gap-1.5">
+              <span className="text-[8px] font-pixel text-gray-500">
+                {activeIndex + 1}/{CARTRIDGES.length}
+              </span>
+              <span
+                className="text-[9px] font-pixel font-bold tracking-wide"
+                style={{ color: activeMeta.themeColor }}
+              >
+                {activeMeta.title}
+              </span>
+              <span className="text-[8px] text-gray-400">▾</span>
             </div>
           </button>
 
-          {/* Quick Action: Open Vault or Next ROM */}
+          {/* Console Customizer & Next ROM buttons */}
           <div className="flex items-center gap-1.5">
+            <button
+              onClick={() => {
+                sounds.playSwitchClick();
+                setTunerOpen(true);
+              }}
+              className="px-2 py-0.5 bg-[#161828] hover:bg-[#20233b] text-[#ff007f] border border-[#ff007f]/40 rounded font-pixel text-[8px] flex items-center gap-1 shadow-sm"
+              title="Change Console Shape & Theme"
+            >
+              <Sliders size={10} />
+              <span className="hidden sm:inline">THEME</span>
+            </button>
+
             <button
               onClick={() => {
                 sounds.playSwitchClick();
                 setVaultOpen(true);
               }}
-              className="px-2 py-1 bg-[#1a1c2d] hover:bg-[#24273d] text-cyan-300 border border-gray-700 rounded font-pixel text-[8px] flex items-center gap-1"
-              title="Open Cartridge Vault"
+              className="px-2 py-0.5 bg-[#161828] hover:bg-[#20233b] text-cyan-300 border border-cyan-500/40 rounded font-pixel text-[8px] flex items-center gap-1"
+              title="Open 10-in-1 Cartridge Vault"
             >
               <Layers size={10} />
-              <span className="hidden sm:inline">VAULT</span>
+              <span className="hidden sm:inline">10 ROMS</span>
             </button>
 
             <button
               onClick={handleNextCartridge}
-              className="p-1 bg-[#222538] hover:bg-[#2c3047] text-amber-400 border border-amber-500/30 rounded font-pixel text-[8px] flex items-center"
+              className="p-0.5 bg-[#1f2235] hover:bg-[#292c45] text-amber-400 border border-amber-500/30 rounded font-pixel text-[8px] flex items-center"
               title="Next Game"
             >
-              <ChevronRight size={13} />
+              <ChevronRight size={12} />
             </button>
           </div>
         </div>
+
+        {/* PORTFOLIO BALANCING BANNER (Always keeps user aware of sm000ky's real work) */}
+        <div
+          onClick={() => onOpenProjectModal(featuredProject)}
+          className="cursor-pointer bg-gradient-to-r from-[#00f0ff]/10 via-[#ff007f]/10 to-transparent border border-cyan-500/30 hover:border-cyan-400 rounded-md px-2.5 py-1 flex items-center justify-between text-[9px] font-mono transition-colors group"
+        >
+          <div className="flex items-center gap-1.5 min-w-0">
+            <Sparkles size={11} className="text-amber-400 shrink-0 animate-spin" />
+            <span className="text-[#00f0ff] font-pixel text-[8px] shrink-0">PORTFOLIO:</span>
+            <span className="text-white font-semibold truncate group-hover:underline">
+              {featuredProject.title}
+            </span>
+            <span className="hidden sm:inline text-gray-400 truncate">
+              — {featuredProject.tagline}
+            </span>
+          </div>
+
+          <div className="flex items-center gap-1 text-[#00f0ff] font-pixel text-[8px] shrink-0 ml-2">
+            <span>DOSSIER</span>
+            <ExternalLink size={9} />
+          </div>
+        </div>
+
       </div>
 
-      {/* 2. CONSOLE HARDWARE CHASSIS (Sculpted Handheld Body) */}
+      {/* 2. CONSOLE HARDWARE CHASSIS (Dynamic Shell & Color Theme) */}
       <div className="flex-1 min-h-0 w-full max-w-lg px-2 flex flex-col justify-between items-center overflow-hidden">
-        <div className="w-full h-full bg-gradient-to-b from-[#181a28] via-[#12131f] to-[#0c0d16] border-x-4 border-b-4 border-[#2c2f48] rounded-b-2xl p-2.5 shadow-[0_12px_35px_rgba(0,0,0,0.9)] flex flex-col justify-between overflow-hidden">
+        <div
+          className={`w-full h-full bg-gradient-to-b ${theme.bodyBg} border-x-4 border-b-4 ${theme.bodyBorder} ${
+            currentShell === 'cabinet'
+              ? 'rounded-b-none border-t-4 shadow-[0_0_35px_rgba(0,240,255,0.2)]'
+              : currentShell === 'cyberdeck'
+              ? 'rounded-b-3xl border-x-2 border-b-2 shadow-[0_0_30px_rgba(255,0,127,0.3)]'
+              : 'rounded-b-2xl shadow-[0_12px_35px_rgba(0,0,0,0.9)]'
+          } p-2.5 flex flex-col justify-between overflow-hidden transition-all duration-300`}
+        >
           
           {/* SCREEN BEZEL / LENS */}
-          <div className="w-full flex-1 min-h-0 bg-[#0c0e18] border-2 border-[#33364f] rounded-xl p-2 shadow-inner flex flex-col justify-between overflow-hidden">
+          <div
+            className={`w-full flex-1 min-h-0 ${theme.lensBg} border-2 ${theme.lensBorder} ${
+              currentShell === 'cabinet' ? 'rounded-md' : 'rounded-xl'
+            } p-2 shadow-inner flex flex-col justify-between overflow-hidden`}
+          >
             
             {/* Screen Top Decal */}
-            <div className="w-full flex items-center justify-between text-[9px] font-pixel text-gray-500 pb-1 border-b border-gray-800/80 shrink-0">
+            <div className="w-full flex items-center justify-between text-[9px] font-pixel text-gray-400 pb-1 border-b border-gray-800/80 shrink-0">
               <div className="flex items-center gap-1.5">
                 <span className="w-2 h-2 rounded-full bg-red-500 shadow-[0_0_6px_#ff0055] animate-pulse" />
-                <span className="text-gray-400">POWER</span>
+                <span className="text-gray-400 text-[8px]">POWER</span>
               </div>
               <div className="text-gray-400 font-bold tracking-widest text-[8px]">
-                SM0KADE COLOR
+                {currentShell === 'cabinet' ? 'SM0KADE MVS' : currentShell === 'cyberdeck' ? 'CYBER RIG 84' : 'SM0KADE COLOR'}
               </div>
-              <div className="text-[#00f0ff] font-bold">
+              <div className="font-bold truncate max-w-[120px]" style={{ color: activeMeta.themeColor }}>
                 {activeMeta.title}
               </div>
             </div>
@@ -346,7 +414,7 @@ export const ArcadeCabinet: React.FC<ArcadeCabinetProps> = ({
               />
             </div>
 
-            {/* Screen Bottom HUD (Score, Lives, Dossier Button) */}
+            {/* Screen Bottom HUD (Score, Lives, Direct Dossier Button) */}
             <div className="w-full flex items-center justify-between text-[10px] font-pixel pt-1 border-t border-gray-800/80 shrink-0">
               <div className="flex items-center gap-2">
                 <span className="text-[#00f0ff]">SC:</span>
@@ -357,9 +425,10 @@ export const ArcadeCabinet: React.FC<ArcadeCabinetProps> = ({
                 {'♥'.repeat(Math.max(0, lives))}
               </div>
 
+              {/* Direct Dossier CTA Button */}
               <button
                 onClick={onOpenDossier}
-                className="px-2 py-0.5 bg-[#1a1c2d] hover:bg-[#282b42] text-[#00f0ff] border border-[#00f0ff]/50 rounded text-[8px] flex items-center gap-1 shadow-neon-cyan"
+                className="px-2.5 py-0.5 bg-[#00f0ff] hover:bg-[#38f2ff] text-black font-bold rounded text-[8px] flex items-center gap-1 shadow-neon-cyan transition-transform active:scale-95"
               >
                 <BookOpen size={10} />
                 <span>DOSSIER</span>
@@ -368,7 +437,7 @@ export const ArcadeCabinet: React.FC<ArcadeCabinetProps> = ({
           </div>
 
           {/* HARDWARE CONTROL DECK (Tactile D-Pad & Slanted Buttons) */}
-          <div className="w-full pt-2 flex items-center justify-between px-2 shrink-0">
+          <div className="w-full pt-1.5 flex items-center justify-between px-2 shrink-0">
             {/* LEFT: Classic Metallic Cross D-Pad */}
             <div className="relative w-28 h-28 flex items-center justify-center">
               {/* Outer Bezel */}
@@ -382,7 +451,7 @@ export const ArcadeCabinet: React.FC<ArcadeCabinetProps> = ({
                 onTouchEnd={(e) => { e.preventDefault(); handleDirButton('up', false); }}
                 onMouseDown={() => handleDirButton('up', true)}
                 onMouseUp={() => handleDirButton('up', false)}
-                className="absolute top-0.5 w-9 h-9 bg-gradient-to-b from-[#343750] to-[#202235] active:from-[#00f0ff] active:to-[#009da8] rounded-t-md border-t border-x border-gray-500/70 text-gray-300 active:text-black flex items-center justify-center font-pixel text-[11px] shadow-sm active:scale-95"
+                className={`absolute top-0.5 w-9 h-9 bg-gradient-to-b ${theme.dpadColor} active:from-[#00f0ff] active:to-[#009da8] rounded-t-md border-t border-x border-gray-500/70 text-gray-300 active:text-black flex items-center justify-center font-pixel text-[11px] shadow-sm active:scale-95`}
                 style={{ touchAction: 'none' }}
               >
                 ▲
@@ -394,7 +463,7 @@ export const ArcadeCabinet: React.FC<ArcadeCabinetProps> = ({
                 onTouchEnd={(e) => { e.preventDefault(); handleDirButton('down', false); }}
                 onMouseDown={() => handleDirButton('down', true)}
                 onMouseUp={() => handleDirButton('down', false)}
-                className="absolute bottom-0.5 w-9 h-9 bg-gradient-to-b from-[#202235] to-[#161826] active:from-[#00f0ff] active:to-[#009da8] rounded-b-md border-b border-x border-gray-600/70 text-gray-300 active:text-black flex items-center justify-center font-pixel text-[11px] shadow-sm active:scale-95"
+                className={`absolute bottom-0.5 w-9 h-9 bg-gradient-to-b ${theme.dpadColor} active:from-[#00f0ff] active:to-[#009da8] rounded-b-md border-b border-x border-gray-600/70 text-gray-300 active:text-black flex items-center justify-center font-pixel text-[11px] shadow-sm active:scale-95`}
                 style={{ touchAction: 'none' }}
               >
                 ▼
@@ -406,7 +475,7 @@ export const ArcadeCabinet: React.FC<ArcadeCabinetProps> = ({
                 onTouchEnd={(e) => { e.preventDefault(); handleDirButton('left', false); }}
                 onMouseDown={() => handleDirButton('left', true)}
                 onMouseUp={() => handleDirButton('left', false)}
-                className="absolute left-0.5 w-9 h-9 bg-gradient-to-r from-[#202235] to-[#2c2f45] active:from-[#00f0ff] active:to-[#009da8] rounded-l-md border-l border-y border-gray-500/70 text-gray-300 active:text-black flex items-center justify-center font-pixel text-[11px] shadow-sm active:scale-95"
+                className={`absolute left-0.5 w-9 h-9 bg-gradient-to-r ${theme.dpadColor} active:from-[#00f0ff] active:to-[#009da8] rounded-l-md border-l border-y border-gray-500/70 text-gray-300 active:text-black flex items-center justify-center font-pixel text-[11px] shadow-sm active:scale-95`}
                 style={{ touchAction: 'none' }}
               >
                 ◀
@@ -418,13 +487,13 @@ export const ArcadeCabinet: React.FC<ArcadeCabinetProps> = ({
                 onTouchEnd={(e) => { e.preventDefault(); handleDirButton('right', false); }}
                 onMouseDown={() => handleDirButton('right', true)}
                 onMouseUp={() => handleDirButton('right', false)}
-                className="absolute right-0.5 w-9 h-9 bg-gradient-to-l from-[#202235] to-[#2c2f45] active:from-[#00f0ff] active:to-[#009da8] rounded-r-md border-r border-y border-gray-500/70 text-gray-300 active:text-black flex items-center justify-center font-pixel text-[11px] shadow-sm active:scale-95"
+                className={`absolute right-0.5 w-9 h-9 bg-gradient-to-l ${theme.dpadColor} active:from-[#00f0ff] active:to-[#009da8] rounded-r-md border-r border-y border-gray-500/70 text-gray-300 active:text-black flex items-center justify-center font-pixel text-[11px] shadow-sm active:scale-95`}
                 style={{ touchAction: 'none' }}
               >
                 ▶
               </button>
 
-              {/* Center Concave Disc */}
+              {/* Center Disc */}
               <div className="absolute w-7 h-7 rounded-full bg-[#131420] border border-gray-600/40 pointer-events-none" />
             </div>
 
@@ -436,7 +505,7 @@ export const ArcadeCabinet: React.FC<ArcadeCabinetProps> = ({
                   <button
                     onClick={handleNextCartridge}
                     className="w-9 h-3.5 bg-[#25283d] active:bg-gray-400 rounded-full border border-gray-600 shadow-inner -rotate-25 active:scale-95 transition-transform"
-                    title="Switch to Next Cartridge"
+                    title="Switch to Next Cartridge (10-in-1)"
                   />
                   <span className="text-[7px] font-pixel text-gray-500">SELECT</span>
                 </div>
@@ -470,13 +539,13 @@ export const ArcadeCabinet: React.FC<ArcadeCabinetProps> = ({
                   onTouchEnd={(e) => { e.preventDefault(); handleActionButton('actionB', false); }}
                   onMouseDown={() => handleActionButton('actionB', true)}
                   onMouseUp={() => handleActionButton('actionB', false)}
-                  className="relative w-12 h-12 rounded-full bg-gradient-to-b from-[#ffaa00] to-[#b37400] border-2 border-amber-300/80 shadow-[0_4px_10px_rgba(255,170,0,0.4)] active:scale-90 active:translate-y-0.5 transition-all flex items-center justify-center font-pixel text-xs text-black font-bold"
+                  className={`relative w-12 h-12 rounded-full bg-gradient-to-b ${theme.buttonB} border-2 shadow-md active:scale-90 active:translate-y-0.5 transition-all flex items-center justify-center font-pixel text-xs font-bold`}
                   style={{ touchAction: 'none' }}
                 >
                   <span>B</span>
                   <div className="absolute top-1 left-1.5 w-6 h-2 rounded-full bg-white/30 blur-[0.5px]" />
                 </button>
-                <span className="text-[8px] font-pixel text-amber-400">BOOST</span>
+                <span className="text-[8px] font-pixel text-gray-400">BOOST</span>
               </div>
 
               {/* BUTTON A */}
@@ -486,7 +555,7 @@ export const ArcadeCabinet: React.FC<ArcadeCabinetProps> = ({
                   onTouchEnd={(e) => { e.preventDefault(); handleActionButton('actionA', false); }}
                   onMouseDown={() => handleActionButton('actionA', true)}
                   onMouseUp={() => handleActionButton('actionA', false)}
-                  className="relative w-13 h-13 rounded-full bg-gradient-to-b from-[#ff0055] to-[#a80038] border-2 border-pink-300/90 shadow-[0_5px_15px_rgba(255,0,85,0.5)] active:scale-90 active:translate-y-0.5 transition-all flex items-center justify-center font-pixel text-sm text-white font-bold"
+                  className={`relative w-13 h-13 rounded-full bg-gradient-to-b ${theme.buttonA} border-2 shadow-md active:scale-90 active:translate-y-0.5 transition-all flex items-center justify-center font-pixel text-sm font-bold`}
                   style={{ touchAction: 'none' }}
                 >
                   <span className="drop-shadow-sm">A</span>
@@ -501,12 +570,22 @@ export const ArcadeCabinet: React.FC<ArcadeCabinetProps> = ({
         </div>
       </div>
 
-      {/* 3. CARTRIDGE VAULT MODAL (The Sleek 6-in-1 Game Selector) */}
+      {/* 3. CARTRIDGE VAULT MODAL (10-in-1 MVS Library) */}
       <CartridgeVaultModal
         isOpen={vaultOpen}
         activeId={activeCartridgeId}
         onSelectCartridge={onSelectCartridge}
         onClose={() => setVaultOpen(false)}
+      />
+
+      {/* 4. CONSOLE TUNER MODAL (Shape & Color Customizer) */}
+      <ConsoleTunerModal
+        isOpen={tunerOpen}
+        currentShell={currentShell}
+        currentColor={currentColor}
+        onSelectShell={onSelectShell}
+        onSelectColor={onSelectColor}
+        onClose={() => setTunerOpen(false)}
       />
     </div>
   );
