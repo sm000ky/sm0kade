@@ -49,6 +49,7 @@ export class AsteroidsGame implements Cartridge {
   // Asteroids & Lasers
   private asteroids: Asteroid[] = [];
   private lasers: Laser[] = [];
+  private particles: { x: number; y: number; vx: number; vy: number; life: number }[] = [];
 
   init(_canvas: HTMLCanvasElement, _ctx: CanvasRenderingContext2D, callbacks: GameCallbacks) {
     this.callbacks = callbacks;
@@ -139,20 +140,24 @@ export class AsteroidsGame implements Cartridge {
       sounds.playLaser();
     }
 
-    // Update Lasers
+    // Update Particles
+    for (let i = this.particles.length - 1; i >= 0; i--) {
+      const p = this.particles[i];
+      p.x += p.vx * dt;
+      p.y += p.vy * dt;
+      p.life -= dt;
+      if (p.life <= 0) this.particles.splice(i, 1);
+    }
+
+    // Update Lasers (Despawn off-screen instead of infinite wrapping)
     for (let i = this.lasers.length - 1; i >= 0; i--) {
       const l = this.lasers[i];
       l.x += l.vx * dt;
       l.y += l.vy * dt;
       l.life -= dt;
 
-      // Screen Wrap
-      if (l.x < 0) l.x = 400;
-      if (l.x > 400) l.x = 0;
-      if (l.y < 0) l.y = 480;
-      if (l.y > 480) l.y = 0;
-
-      if (l.life <= 0) {
+      // Laser despawns when leaving screen or lifetime ends
+      if (l.x < 0 || l.x > 400 || l.y < 0 || l.y > 480 || l.life <= 0) {
         this.lasers.splice(i, 1);
         continue;
       }
@@ -165,6 +170,19 @@ export class AsteroidsGame implements Cartridge {
           this.lasers.splice(i, 1);
           this.score += a.tier * 50;
           sounds.playExplosion();
+
+          // Spawn debris particles
+          for (let p = 0; p < 8; p++) {
+            const ang = Math.random() * Math.PI * 2;
+            const spd = 30 + Math.random() * 70;
+            this.particles.push({
+              x: a.x,
+              y: a.y,
+              vx: Math.cos(ang) * spd,
+              vy: Math.sin(ang) * spd,
+              life: 0.35
+            });
+          }
 
           // Split asteroid if tier > 1
           if (a.tier > 1) {
@@ -262,6 +280,12 @@ export class AsteroidsGame implements Cartridge {
       ctx.beginPath();
       ctx.arc(l.x, l.y, 2.5, 0, Math.PI * 2);
       ctx.fill();
+    }
+
+    // Draw Asteroid Debris Particles
+    ctx.fillStyle = '#ff007f';
+    for (const p of this.particles) {
+      ctx.fillRect(p.x, p.y, 2, 2);
     }
 
     // Draw Ship

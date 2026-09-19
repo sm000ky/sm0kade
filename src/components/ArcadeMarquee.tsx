@@ -47,6 +47,17 @@ export const ArcadeMarquee: React.FC<ArcadeMarqueeProps> = ({
     return () => clearInterval(interval);
   }, []);
 
+  // Synchronize BGM button state with tab visibility
+  useEffect(() => {
+    const handleVisibility = () => {
+      if (document.hidden) {
+        setBgmActive(false);
+      }
+    };
+    document.addEventListener('visibilitychange', handleVisibility);
+    return () => document.removeEventListener('visibilitychange', handleVisibility);
+  }, []);
+
   const handleCoin = () => {
     setCoinPressed(true);
     sounds.playCoin();

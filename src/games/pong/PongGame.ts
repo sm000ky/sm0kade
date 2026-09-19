@@ -78,11 +78,10 @@ export class PongGame implements Cartridge {
     if (input.down) this.playerY += this.paddleSpeed * dt;
     this.playerY = Math.max(10, Math.min(480 - this.paddleH - 10, this.playerY));
 
-    // AI paddle move with slight reaction delay
+    // AI paddle move with smooth lerp easing (natural arcade human reaction)
     const targetAiY = this.ballY - this.paddleH / 2;
-    const aiSpeed = 230 * dt;
-    if (this.aiY < targetAiY - 5) this.aiY += Math.min(aiSpeed, targetAiY - this.aiY);
-    else if (this.aiY > targetAiY + 5) this.aiY -= Math.min(aiSpeed, this.aiY - targetAiY);
+    const diff = targetAiY - this.aiY;
+    this.aiY += diff * 9.0 * dt;
     this.aiY = Math.max(10, Math.min(480 - this.paddleH - 10, this.aiY));
 
     // Ball movement

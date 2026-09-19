@@ -10,7 +10,7 @@ import { ProjectNotification } from './ProjectNotification';
 import { Project } from '../types/project';
 import { ConsolePresetId, CONSOLE_PRESETS, DeckPosition } from '../types/console';
 import { sounds } from '../audio/soundManager';
-import { BookOpen, Layers, ChevronRight, Sliders, ExternalLink, Sparkles, Trophy, Award, Gamepad2, RotateCcw } from 'lucide-react';
+import { BookOpen, Layers, ChevronRight, Sliders, ExternalLink, Sparkles, Trophy, Award, Gamepad2, RotateCcw, Pause, Play, Share2, Check } from 'lucide-react';
 import { PROJECTS } from '../data/projects';
 
 interface ArcadeCabinetProps {
@@ -48,7 +48,17 @@ export const ArcadeCabinet: React.FC<ArcadeCabinetProps> = ({
   // Screen Mode: 'game' vs 'dossier' inside the CRT
   const [screenMode, setScreenMode] = useState<'game' | 'dossier'>('game');
   const [isBooting, setIsBooting] = useState<boolean>(true);
+  const [isGamePaused, setIsGamePaused] = useState<boolean>(false);
+  const [shareToast, setShareToast] = useState<boolean>(false);
   const [deckPosition, setDeckPosition] = useState<DeckPosition>('bottom');
+
+  const handleShareScore = () => {
+    sounds.playCoin();
+    const text = `🕹️ SM0KADE ARCADE // HIGH SCORE\nPILOT: sm000ky × Zero Two\nGAME: ${activeMeta.title}\nSCORE: ${score.toLocaleString()} PTS (HI: ${highScore.toLocaleString()} PTS)\nPLAY LIVE: https://sm0kade.vercel.app`;
+    navigator.clipboard.writeText(text);
+    setShareToast(true);
+    setTimeout(() => setShareToast(false), 2500);
+  };
 
   // Dismiss boot screen after 2.4s
   useEffect(() => {
@@ -167,7 +177,7 @@ export const ArcadeCabinet: React.FC<ArcadeCabinetProps> = ({
       const canvas = canvasRef.current;
       const cartridge = cartridgeRef.current;
 
-      if (isVisible && screenMode === 'game' && canvas && cartridge) {
+      if (isVisible && screenMode === 'game' && !isGamePaused && canvas && cartridge) {
         const ctx = canvas.getContext('2d');
         if (ctx) {
           cartridge.update(deltaTime, inputRef.current);
@@ -187,7 +197,7 @@ export const ArcadeCabinet: React.FC<ArcadeCabinetProps> = ({
         cancelAnimationFrame(animationFrameRef.current);
       }
     };
-  }, [screenMode]);
+  }, [screenMode, isGamePaused]);
 
   // Keyboard Event Listeners & Konami Code Detector
   useEffect(() => {
@@ -240,6 +250,9 @@ export const ArcadeCabinet: React.FC<ArcadeCabinetProps> = ({
         e.preventDefault();
       } else if (e.code === 'KeyR') {
         cartridgeRef.current?.reset();
+      } else if (e.code === 'KeyP') {
+        sounds.playSwitchClick();
+        setIsGamePaused((prev) => !prev);
       } else if (e.code === 'Tab') {
         e.preventDefault();
         handleNextCartridge();
@@ -465,17 +478,44 @@ export const ArcadeCabinet: React.FC<ArcadeCabinetProps> = ({
             <div className="w-full flex items-center justify-between text-[9px] font-pixel text-gray-400 pb-1 border-b border-gray-800/80 shrink-0">
               <div className="flex items-center gap-1.5">
                 <span className="w-2 h-2 rounded-full bg-red-500 shadow-[0_0_6px_#ff0055] animate-pulse" />
-                <span className="text-gray-400 text-[8px]">POWER</span>
+                <span className="text-gray-400 text-[8px] hidden sm:inline">POWER</span>
+                
+                {/* Touch Pause Button */}
+                {screenMode === 'game' && !isBooting && lives > 0 && (
+                  <button
+                    onClick={() => {
+                      sounds.playSwitchClick();
+                      setIsGamePaused((prev) => !prev);
+                    }}
+                    className={`px-1.5 py-0.5 rounded border text-[7px] font-pixel flex items-center gap-1 transition-colors ${
+                      isGamePaused
+                        ? 'bg-[#00f0ff] text-black border-[#00f0ff] font-bold shadow-neon-cyan'
+                        : 'bg-[#151829] text-gray-400 border-gray-700 hover:text-white'
+                    }`}
+                    title="Pause Game [P]"
+                  >
+                    {isGamePaused ? <Play size={8} /> : <Pause size={8} />}
+                    <span>{isGamePaused ? 'RESUME' : 'PAUSE'}</span>
+                  </button>
+                )}
               </div>
+
               <div
-                className="font-pixel text-[10px] font-bold tracking-wider"
+                className="font-pixel text-[10px] font-bold tracking-wider truncate max-w-[170px]"
                 style={{ color: screenMode === 'dossier' ? '#00f0ff' : activeMeta.themeColor }}
               >
                 {screenMode === 'dossier' ? '★ PORTFOLIO DOSSIER' : activeMeta.title}
               </div>
-              <div className="text-[8px] text-gray-500 font-pixel">
-                {screenMode === 'dossier' ? 'ACTIVE' : activeMeta.genre.toUpperCase()}
-              </div>
+
+              {/* Share Score Button */}
+              <button
+                onClick={handleShareScore}
+                className="px-1.5 py-0.5 rounded bg-[#151829] hover:bg-[#20253f] text-cyan-300 border border-cyan-500/40 text-[7px] font-pixel flex items-center gap-1 transition-colors"
+                title="Share Score Card"
+              >
+                <Share2 size={9} />
+                <span className="hidden sm:inline">SHARE</span>
+              </button>
             </div>
 
             {/* CRT Display Frame: Switches between Game Canvas, Interactive Dossier, and BIOS Boot */}
@@ -495,6 +535,37 @@ export const ArcadeCabinet: React.FC<ArcadeCabinetProps> = ({
                   onOpenProjectModal(proj);
                 }}
               />
+
+              {/* Share Score Card Toast Notification */}
+              {shareToast && (
+                <div className="absolute top-3 left-1/2 -translate-x-1/2 bg-[#0c1022]/95 border-2 border-[#00ff66] text-[#00ff66] px-3 py-1.5 rounded-md font-pixel text-[9px] shadow-[0_0_15px_#00ff66] z-40 animate-bounce">
+                  ★ SCORE CARD COPIED TO CLIPBOARD!
+                </div>
+              )}
+
+              {/* Pause Game Overlay */}
+              {isGamePaused && screenMode === 'game' && lives > 0 && !isBooting && (
+                <div
+                  onClick={() => setIsGamePaused(false)}
+                  className="absolute inset-0 bg-black/85 flex flex-col items-center justify-center p-4 font-pixel text-center select-none z-30 cursor-pointer animate-fadeIn"
+                >
+                  <div className="text-[#00f0ff] text-base animate-pulse tracking-wider">
+                    GAME PAUSED
+                  </div>
+                  <div className="text-[10px] text-gray-400 mt-2 font-mono">
+                    TAP SCREEN OR PRESS [P] / [START] TO RESUME
+                  </div>
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setIsGamePaused(false);
+                    }}
+                    className="mt-4 px-3 py-1 bg-[#00f0ff] text-black font-pixel text-[9px] font-bold rounded shadow-neon-cyan"
+                  >
+                    RESUME PLAY
+                  </button>
+                </div>
+              )}
 
               {/* 1. RETRO BIOS POST SCREEN (2.4s First Impression) */}
               {isBooting ? (

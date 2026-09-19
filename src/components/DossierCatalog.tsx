@@ -1,6 +1,7 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Project } from '../types/project';
-import { ExternalLink, Github, Trophy, Terminal, Shield, ArrowLeft } from 'lucide-react';
+import { CONTACT_CHANNELS } from '../data/contacts';
+import { ExternalLink, Github, Trophy, Terminal, Shield, ArrowLeft, Radio, Copy, Check } from 'lucide-react';
 import { sounds } from '../audio/soundManager';
 
 interface DossierCatalogProps {
@@ -14,6 +15,14 @@ export const DossierCatalog: React.FC<DossierCatalogProps> = ({
   onSelectProject,
   onBackToArcade
 }) => {
+  const [copiedId, setCopiedId] = useState<string | null>(null);
+
+  const handleCopy = (text: string, id: string) => {
+    sounds.playSwitchClick();
+    navigator.clipboard.writeText(text);
+    setCopiedId(id);
+    setTimeout(() => setCopiedId(null), 2000);
+  };
   return (
     <div className="w-full max-w-4xl mx-auto px-4 py-6 font-mono text-gray-200 animate-fadeIn selection:bg-[#00f0ff] selection:text-black">
       
@@ -187,6 +196,78 @@ export const DossierCatalog: React.FC<DossierCatalogProps> = ({
             </div>
           </div>
         ))}
+      </div>
+
+      {/* SECURE COMM-LINKS & CONTACT TERMINAL */}
+      <div className="mt-8 bg-[#0b0d18] border-2 border-[#ff007f] rounded-xl p-4 sm:p-5 shadow-neon-pink relative overflow-hidden">
+        <div className="flex items-center justify-between border-b border-[#ff007f]/40 pb-2 mb-4">
+          <div className="flex items-center gap-2">
+            <Radio size={18} className="text-[#ff007f] animate-pulse" />
+            <h2 className="text-xs sm:text-sm font-pixel text-white tracking-wider">
+              SECURE COMM-LINKS // DIRECT CHANNELS
+            </h2>
+          </div>
+          <span className="text-[8px] font-pixel px-2 py-0.5 bg-[#00ff66]/20 text-[#00ff66] border border-[#00ff66]/40 rounded">
+            SIGNALS ACTIVE
+          </span>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+          {CONTACT_CHANNELS.map((contact) => (
+            <div
+              key={contact.id}
+              className="bg-[#111322] border border-gray-700/80 hover:border-[#00f0ff] p-3 rounded-lg flex flex-col justify-between transition-all group"
+            >
+              <div>
+                <div className="flex items-center justify-between text-[9px] font-pixel text-gray-400 mb-1.5">
+                  <span className="flex items-center gap-1">
+                    <span>{contact.icon}</span>
+                    <span className="text-white font-bold">{contact.name}</span>
+                  </span>
+                  <span className="text-[7px] text-gray-500">{contact.protocol}</span>
+                </div>
+
+                <div className="text-xs font-pixel text-[#00f0ff] truncate py-1">
+                  {contact.handle}
+                </div>
+
+                <p className="text-[10px] text-gray-400 mt-1 leading-relaxed">
+                  {contact.description}
+                </p>
+              </div>
+
+              <div className="flex items-center gap-2 mt-3 pt-2 border-t border-gray-800">
+                <a
+                  href={contact.url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex-1 py-1 px-2 bg-[#1a1e33] hover:bg-[#252b47] text-white border border-gray-600 rounded font-pixel text-[8px] flex items-center justify-center gap-1 transition-colors"
+                >
+                  <span>CONNECT</span>
+                  <ExternalLink size={9} />
+                </a>
+
+                <button
+                  onClick={() => handleCopy(contact.handle, contact.id)}
+                  className="p-1 px-2 bg-[#141624] hover:bg-[#1f2238] text-gray-400 hover:text-white border border-gray-700 rounded font-pixel text-[8px] flex items-center gap-1"
+                  title="Copy Handle"
+                >
+                  {copiedId === contact.id ? (
+                    <>
+                      <Check size={10} className="text-[#00ff66]" />
+                      <span className="text-[#00ff66]">COPIED</span>
+                    </>
+                  ) : (
+                    <>
+                      <Copy size={10} />
+                      <span>COPY</span>
+                    </>
+                  )}
+                </button>
+              </div>
+            </div>
+          ))}
+        </div>
       </div>
 
       {/* FOOTER */}
