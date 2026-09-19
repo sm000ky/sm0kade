@@ -92,11 +92,13 @@ export const ArcadeMarquee: React.FC<ArcadeMarqueeProps> = ({
           </div>
         </div>
 
-        {/* Center: Live Radio Chatter from Zero Two */}
-        <div className="hidden lg:flex items-center gap-2 bg-[#06070c] border border-[#23253b] px-3 py-1 rounded-full text-[10px] font-mono text-cyan-300 max-w-sm overflow-hidden">
-          <span className="w-2 h-2 rounded-full bg-[#ff007f] animate-ping shrink-0" />
-          <span className="text-[#ff007f] font-pixel text-[9px] shrink-0">COMMS [002]:</span>
-          <span className="truncate italic">"{ZERO_TWO_COMM_LINES[commIndex]}"</span>
+        {/* Center: Console Specs Badge */}
+        <div className="hidden sm:flex items-center gap-2 text-[10px] font-pixel text-gray-400">
+          <span className="text-[#ffea00]">1-DAY-1-PROJ</span>
+          <span className="text-gray-600">•</span>
+          <span className="text-[#00f0ff]">DAY 5</span>
+          <span className="text-gray-600">•</span>
+          <span className="text-emerald-400">3 ROMS LOADED</span>
         </div>
 
         {/* Right: Controls, BGM, & Coin Slot */}

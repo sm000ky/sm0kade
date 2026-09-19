@@ -1,13 +1,12 @@
 import React, { useRef, useEffect, useState, useCallback } from 'react';
 import { Cartridge, InputState } from '../games/types';
 import { CARTRIDGES, getCartridgeById } from '../games/registry';
-import { CartridgeSelector } from './CartridgeSelector';
-import { VirtualControls } from './VirtualControls';
+import { PhysicalCartridgeSlot } from './PhysicalCartridgeSlot';
 import { CRTOverlay } from './CRTOverlay';
 import { ProjectNotification } from './ProjectNotification';
 import { Project } from '../types/project';
 import { sounds } from '../audio/soundManager';
-import { Play, BookOpen, RotateCcw } from 'lucide-react';
+import { BookOpen } from 'lucide-react';
 
 interface ArcadeCabinetProps {
   activeCartridgeId: string;
@@ -47,7 +46,6 @@ export const ArcadeCabinet: React.FC<ArcadeCabinetProps> = ({
     actionB: false
   });
 
-  // Popup notifications for in-game pickups
   const [unlockedProject, setUnlockedProject] = useState<Project | null>(null);
 
   // Initialize or swap cartridge
@@ -75,10 +73,8 @@ export const ArcadeCabinet: React.FC<ArcadeCabinetProps> = ({
     }
   }, [onScoreChange, onLivesChange]);
 
-  // Effect: Mount and change cartridge
   useEffect(() => {
     loadCartridge(activeCartridgeId);
-
     return () => {
       if (cartridgeRef.current) {
         cartridgeRef.current.destroy();
@@ -162,20 +158,7 @@ export const ArcadeCabinet: React.FC<ArcadeCabinetProps> = ({
     };
   }, []);
 
-  const handleVirtualInput = (partial: Partial<InputState>) => {
-    inputRef.current = { ...inputRef.current, ...partial };
-  };
-
-  const handleActionClick = (actionName: string) => {
-    cartridgeRef.current?.handleAction?.(actionName);
-  };
-
-  const handleReset = () => {
-    sounds.playBounce(1);
-    cartridgeRef.current?.reset();
-  };
-
-  // Touch swipe support on Canvas for mobile
+  // Touch Swipe on Canvas
   const touchStartRef = useRef<{ x: number; y: number } | null>(null);
 
   const handleTouchStart = (e: React.TouchEvent) => {
@@ -214,75 +197,93 @@ export const ArcadeCabinet: React.FC<ArcadeCabinetProps> = ({
         inputRef.current.down = false;
       }, 100);
     } else {
-      // Tap on canvas fires Action A
       cartridgeRef.current?.handleAction?.('actionA');
     }
     touchStartRef.current = null;
+  };
+
+  // Switch to next cartridge (for SELECT button)
+  const handleNextCartridge = () => {
+    sounds.playCartridgeSwap();
+    const currentIndex = CARTRIDGES.findIndex((c) => c.id === activeCartridgeId);
+    const nextIndex = (currentIndex + 1) % CARTRIDGES.length;
+    onSelectCartridge(CARTRIDGES[nextIndex].id);
+  };
+
+  const handleResetGame = () => {
+    sounds.playBounce(1.2);
+    cartridgeRef.current?.reset();
+  };
+
+  const handleDirButton = (dir: 'up' | 'down' | 'left' | 'right', active: boolean) => {
+    sounds.playSwitchClick();
+    if (active) {
+      inputRef.current = {
+        ...inputRef.current,
+        up: dir === 'up',
+        down: dir === 'down',
+        left: dir === 'left',
+        right: dir === 'right'
+      };
+    } else {
+      inputRef.current[dir] = false;
+    }
+  };
+
+  const handleActionButton = (action: 'actionA' | 'actionB', active: boolean) => {
+    sounds.playSwitchClick();
+    inputRef.current[action] = active;
+    if (active) {
+      cartridgeRef.current?.handleAction?.(action);
+    }
   };
 
   const activeMeta = getCartridgeById(activeCartridgeId) || CARTRIDGES[0];
 
   return (
     <div className="w-full h-full flex-1 flex flex-col justify-between items-center overflow-hidden select-none">
-      {/* Cartridge Selection Slot */}
+      {/* 1. PHYSICAL CARTRIDGE SLOT (Visual Cartridge Bay) */}
       <div className="w-full shrink-0">
-        <CartridgeSelector
+        <PhysicalCartridgeSlot
           activeId={activeCartridgeId}
           onSelectCartridge={onSelectCartridge}
         />
       </div>
 
-      {/* Arcade Cabinet Screen Section (Viewport Fitted) */}
-      <div className="flex-1 min-h-0 w-full max-w-xl px-2 py-1 flex flex-col justify-center items-center overflow-hidden">
-        {/* Cabinet Housing / Bezel */}
-        <div className="relative bg-[#12131e] border-2 md:border-4 border-[#25283c] rounded-xl p-2 md:p-3 shadow-[0_0_30px_rgba(0,0,0,0.9)] w-full h-full max-h-full flex flex-col justify-between">
-          {/* Bezel Screws & Aesthetics */}
-          <div className="absolute top-1.5 left-1.5 w-1.5 h-1.5 rounded-full bg-gray-600 border border-gray-400" />
-          <div className="absolute top-1.5 right-1.5 w-1.5 h-1.5 rounded-full bg-gray-600 border border-gray-400" />
-          <div className="absolute bottom-1.5 left-1.5 w-1.5 h-1.5 rounded-full bg-gray-600 border border-gray-400" />
-          <div className="absolute bottom-1.5 right-1.5 w-1.5 h-1.5 rounded-full bg-gray-600 border border-gray-400" />
-
-          {/* CRT Screen Frame */}
-          <div className="relative bg-black rounded-lg overflow-hidden border-2 border-[#33364f] shadow-crt flex-1 min-h-0 w-full flex flex-col items-center justify-between">
-            {/* CRT Screen Scanlines / Filter */}
-            <CRTOverlay enabled={crtEnabled} />
-
-            {/* In-Game Picked Up Project Popup */}
-            <ProjectNotification
-              project={unlockedProject}
-              onClose={() => setUnlockedProject(null)}
-              onViewDetails={(proj) => {
-                setUnlockedProject(null);
-                onOpenProjectModal(proj);
-              }}
-            />
-
-            {/* Screen Top HUD (Inside CRT) */}
-            <div className="w-full bg-[#080910] border-b border-[#222438] px-2.5 py-1 flex items-center justify-between text-xs z-10 font-pixel shrink-0">
-              <div className="flex items-center gap-2 text-[10px]">
-                <span className="text-[#00f0ff]">SCORE:</span>
-                <span className="text-white">{score.toString().padStart(6, '0')}</span>
+      {/* 2. CONSOLE HARDWARE CHASSIS (Sculpted Handheld Body) */}
+      <div className="flex-1 min-h-0 w-full max-w-lg px-2 flex flex-col justify-between items-center overflow-hidden">
+        <div className="w-full h-full bg-gradient-to-b from-[#181a28] via-[#12131f] to-[#0c0d16] border-x-4 border-b-4 border-[#2c2f48] rounded-b-2xl p-2.5 shadow-[0_12px_35px_rgba(0,0,0,0.9)] flex flex-col justify-between overflow-hidden">
+          
+          {/* SCREEN BEZEL / LENS */}
+          <div className="w-full flex-1 min-h-0 bg-[#0c0e18] border-2 border-[#33364f] rounded-xl p-2 shadow-inner flex flex-col justify-between overflow-hidden">
+            
+            {/* Screen Top Decal */}
+            <div className="w-full flex items-center justify-between text-[9px] font-pixel text-gray-500 pb-1 border-b border-gray-800/80 shrink-0">
+              <div className="flex items-center gap-1.5">
+                <span className="w-2 h-2 rounded-full bg-red-500 shadow-[0_0_6px_#ff0055] animate-pulse" />
+                <span className="text-gray-400">BATTERY</span>
               </div>
-
-              <div className="flex items-center gap-2 text-[10px]">
-                <div className="flex items-center gap-1">
-                  <span className="text-gray-400">LIVES:</span>
-                  <span className="text-[#ff0055] tracking-widest">
-                    {'♥'.repeat(Math.max(0, lives))}
-                  </span>
-                </div>
-                <button
-                  onClick={handleReset}
-                  className="text-gray-400 hover:text-white p-0.5 rounded"
-                  title="Restart Current Game"
-                >
-                  <RotateCcw size={12} />
-                </button>
+              <div className="text-gray-400 font-bold tracking-widest text-[8px]">
+                SM0KADE COLOR
+              </div>
+              <div className="text-[#00f0ff] font-bold">
+                {activeMeta.title}
               </div>
             </div>
 
-            {/* Canvas Display (Strictly contained, never overflows) */}
-            <div className="relative flex-1 min-h-0 w-full flex items-center justify-center bg-[#05070a] overflow-hidden">
+            {/* CRT Display Frame */}
+            <div className="relative flex-1 min-h-0 w-full flex items-center justify-center bg-[#05070a] rounded-md overflow-hidden border border-[#23253b] my-1">
+              <CRTOverlay enabled={crtEnabled} />
+
+              <ProjectNotification
+                project={unlockedProject}
+                onClose={() => setUnlockedProject(null)}
+                onViewDetails={(proj) => {
+                  setUnlockedProject(null);
+                  onOpenProjectModal(proj);
+                }}
+              />
+
               <canvas
                 ref={canvasRef}
                 width={400}
@@ -293,34 +294,159 @@ export const ArcadeCabinet: React.FC<ArcadeCabinetProps> = ({
               />
             </div>
 
-            {/* In-Screen Mode Switch Bar */}
-            <div className="w-full bg-[#090b14] border-t border-[#222438] px-2 py-1 flex items-center justify-between z-10 shrink-0">
-              <div className="flex items-center gap-1.5 text-[9px] font-pixel text-gray-400">
-                <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-ping" />
-                <span className="hidden sm:inline">LIVE PLAY</span>
+            {/* Screen Bottom HUD (Score, Lives, Dossier Button) */}
+            <div className="w-full flex items-center justify-between text-[10px] font-pixel pt-1 border-t border-gray-800/80 shrink-0">
+              <div className="flex items-center gap-2">
+                <span className="text-[#00f0ff]">SC:</span>
+                <span className="text-white font-bold">{score.toString().padStart(6, '0')}</span>
               </div>
 
-              <div className="flex items-center gap-2">
-                <button
-                  onClick={onOpenDossier}
-                  className="px-2.5 py-0.5 bg-[#1a1c2d] hover:bg-[#25283e] text-[#00f0ff] border border-[#00f0ff]/50 rounded font-pixel text-[9px] flex items-center gap-1 transition-all shadow-neon-cyan"
-                >
-                  <BookOpen size={11} />
-                  <span>DOSSIER</span>
-                </button>
+              <div className="flex items-center gap-1 text-[#ff0055]">
+                {'♥'.repeat(Math.max(0, lives))}
               </div>
+
+              <button
+                onClick={onOpenDossier}
+                className="px-2 py-0.5 bg-[#1a1c2d] hover:bg-[#282b42] text-[#00f0ff] border border-[#00f0ff]/50 rounded text-[8px] flex items-center gap-1 shadow-neon-cyan"
+              >
+                <BookOpen size={10} />
+                <span>DOSSIER</span>
+              </button>
             </div>
           </div>
-        </div>
-      </div>
 
-      {/* Tactile Virtual Controls (Mobile friendly D-Pad / Buttons) */}
-      <div className="w-full shrink-0">
-        <VirtualControls
-          onInput={handleVirtualInput}
-          onActionClick={handleActionClick}
-          instructions={activeMeta.factory().instructions}
-        />
+          {/* HARDWARE CONTROL DECK (Tactile D-Pad & Slanted Buttons) */}
+          <div className="w-full pt-2 flex items-center justify-between px-2 shrink-0">
+            {/* LEFT: Classic Metallic Cross D-Pad */}
+            <div className="relative w-28 h-28 flex items-center justify-center">
+              {/* Outer Bezel */}
+              <div className="absolute inset-0 rounded-full bg-gradient-to-b from-[#2b2d42] to-[#12131c] p-1 shadow-md border border-gray-700/60 flex items-center justify-center">
+                <div className="w-full h-full rounded-full bg-[#161724]" />
+              </div>
+
+              {/* UP */}
+              <button
+                onTouchStart={(e) => { e.preventDefault(); handleDirButton('up', true); }}
+                onTouchEnd={(e) => { e.preventDefault(); handleDirButton('up', false); }}
+                onMouseDown={() => handleDirButton('up', true)}
+                onMouseUp={() => handleDirButton('up', false)}
+                className="absolute top-0.5 w-9 h-9 bg-gradient-to-b from-[#343750] to-[#202235] active:from-[#00f0ff] active:to-[#009da8] rounded-t-md border-t border-x border-gray-500/70 text-gray-300 active:text-black flex items-center justify-center font-pixel text-[11px] shadow-sm active:scale-95"
+                style={{ touchAction: 'none' }}
+              >
+                ▲
+              </button>
+
+              {/* DOWN */}
+              <button
+                onTouchStart={(e) => { e.preventDefault(); handleDirButton('down', true); }}
+                onTouchEnd={(e) => { e.preventDefault(); handleDirButton('down', false); }}
+                onMouseDown={() => handleDirButton('down', true)}
+                onMouseUp={() => handleDirButton('down', false)}
+                className="absolute bottom-0.5 w-9 h-9 bg-gradient-to-b from-[#202235] to-[#161826] active:from-[#00f0ff] active:to-[#009da8] rounded-b-md border-b border-x border-gray-600/70 text-gray-300 active:text-black flex items-center justify-center font-pixel text-[11px] shadow-sm active:scale-95"
+                style={{ touchAction: 'none' }}
+              >
+                ▼
+              </button>
+
+              {/* LEFT */}
+              <button
+                onTouchStart={(e) => { e.preventDefault(); handleDirButton('left', true); }}
+                onTouchEnd={(e) => { e.preventDefault(); handleDirButton('left', false); }}
+                onMouseDown={() => handleDirButton('left', true)}
+                onMouseUp={() => handleDirButton('left', false)}
+                className="absolute left-0.5 w-9 h-9 bg-gradient-to-r from-[#202235] to-[#2c2f45] active:from-[#00f0ff] active:to-[#009da8] rounded-l-md border-l border-y border-gray-500/70 text-gray-300 active:text-black flex items-center justify-center font-pixel text-[11px] shadow-sm active:scale-95"
+                style={{ touchAction: 'none' }}
+              >
+                ◀
+              </button>
+
+              {/* RIGHT */}
+              <button
+                onTouchStart={(e) => { e.preventDefault(); handleDirButton('right', true); }}
+                onTouchEnd={(e) => { e.preventDefault(); handleDirButton('right', false); }}
+                onMouseDown={() => handleDirButton('right', true)}
+                onMouseUp={() => handleDirButton('right', false)}
+                className="absolute right-0.5 w-9 h-9 bg-gradient-to-l from-[#202235] to-[#2c2f45] active:from-[#00f0ff] active:to-[#009da8] rounded-r-md border-r border-y border-gray-500/70 text-gray-300 active:text-black flex items-center justify-center font-pixel text-[11px] shadow-sm active:scale-95"
+                style={{ touchAction: 'none' }}
+              >
+                ▶
+              </button>
+
+              {/* Center Concave Disc */}
+              <div className="absolute w-7 h-7 rounded-full bg-[#131420] border border-gray-600/40 pointer-events-none" />
+            </div>
+
+            {/* CENTER: SELECT & START Rubber Pill Buttons */}
+            <div className="flex flex-col items-center gap-3">
+              <div className="flex items-center gap-3">
+                {/* SELECT (Switch Cartridge) */}
+                <div className="flex flex-col items-center gap-1">
+                  <button
+                    onClick={handleNextCartridge}
+                    className="w-9 h-3.5 bg-[#25283d] active:bg-gray-400 rounded-full border border-gray-600 shadow-inner -rotate-25 active:scale-95 transition-transform"
+                    title="Switch to Next Cartridge"
+                  />
+                  <span className="text-[7px] font-pixel text-gray-500">SELECT</span>
+                </div>
+
+                {/* START / RESTART */}
+                <div className="flex flex-col items-center gap-1">
+                  <button
+                    onClick={handleResetGame}
+                    className="w-9 h-3.5 bg-[#25283d] active:bg-gray-400 rounded-full border border-gray-600 shadow-inner -rotate-25 active:scale-95 transition-transform"
+                    title="Restart Current Game"
+                  />
+                  <span className="text-[7px] font-pixel text-gray-500">START</span>
+                </div>
+              </div>
+
+              {/* Speaker Grille Slits */}
+              <div className="flex gap-1 opacity-40">
+                <div className="w-1 h-4 bg-black rounded-full" />
+                <div className="w-1 h-4 bg-black rounded-full" />
+                <div className="w-1 h-4 bg-black rounded-full" />
+                <div className="w-1 h-4 bg-black rounded-full" />
+              </div>
+            </div>
+
+            {/* RIGHT: Slanted Candy Buttons A & B */}
+            <div className="flex items-center gap-3 pr-1">
+              {/* BUTTON B */}
+              <div className="flex flex-col items-center gap-1 translate-y-3">
+                <button
+                  onTouchStart={(e) => { e.preventDefault(); handleActionButton('actionB', true); }}
+                  onTouchEnd={(e) => { e.preventDefault(); handleActionButton('actionB', false); }}
+                  onMouseDown={() => handleActionButton('actionB', true)}
+                  onMouseUp={() => handleActionButton('actionB', false)}
+                  className="relative w-12 h-12 rounded-full bg-gradient-to-b from-[#ffaa00] to-[#b37400] border-2 border-amber-300/80 shadow-[0_4px_10px_rgba(255,170,0,0.4)] active:scale-90 active:translate-y-0.5 transition-all flex items-center justify-center font-pixel text-xs text-black font-bold"
+                  style={{ touchAction: 'none' }}
+                >
+                  <span>B</span>
+                  <div className="absolute top-1 left-1.5 w-6 h-2 rounded-full bg-white/30 blur-[0.5px]" />
+                </button>
+                <span className="text-[8px] font-pixel text-amber-400">BOOST</span>
+              </div>
+
+              {/* BUTTON A */}
+              <div className="flex flex-col items-center gap-1 -translate-y-1">
+                <button
+                  onTouchStart={(e) => { e.preventDefault(); handleActionButton('actionA', true); }}
+                  onTouchEnd={(e) => { e.preventDefault(); handleActionButton('actionA', false); }}
+                  onMouseDown={() => handleActionButton('actionA', true)}
+                  onMouseUp={() => handleActionButton('actionA', false)}
+                  className="relative w-13 h-13 rounded-full bg-gradient-to-b from-[#ff0055] to-[#a80038] border-2 border-pink-300/90 shadow-[0_5px_15px_rgba(255,0,85,0.5)] active:scale-90 active:translate-y-0.5 transition-all flex items-center justify-center font-pixel text-sm text-white font-bold"
+                  style={{ touchAction: 'none' }}
+                >
+                  <span className="drop-shadow-sm">A</span>
+                  <div className="absolute top-1 left-2 w-7 h-2.5 rounded-full bg-white/35 blur-[0.5px]" />
+                </button>
+                <span className="text-[8px] font-pixel text-[#ff0055]">ACTION</span>
+              </div>
+            </div>
+
+          </div>
+
+        </div>
       </div>
     </div>
   );

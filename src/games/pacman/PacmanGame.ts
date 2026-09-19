@@ -1,7 +1,6 @@
 import { Cartridge, GameCallbacks, InputState } from '../types';
 import { sounds } from '../../audio/soundManager';
 import { PROJECTS } from '../../data/projects';
-import { Project } from '../../types/project';
 
 // 19 cols x 21 rows
 // 0: Walkable Corridor
@@ -19,7 +18,7 @@ const BASE_MAP: number[][] = [
   [1,2,2,2,2,1,2,2,2,1,2,2,2,1,2,2,2,2,1],
   [1,1,1,1,2,1,1,1,0,0,0,1,1,1,2,1,1,1,1],
   [0,0,0,1,2,1,0,0,0,0,0,0,0,1,2,1,0,0,0],
-  [1,1,1,1,2,1,0,1,1,4,1,1,0,1,2,1,1,1,1],
+  [1,1,1,1,2,1,0,1,1,0,1,1,0,1,2,1,1,1,1],
   [0,0,0,0,2,0,0,1,0,0,0,1,0,0,2,0,0,0,0],
   [1,1,1,1,2,1,0,1,1,1,1,1,0,1,2,1,1,1,1],
   [0,0,0,1,2,1,0,0,0,0,0,0,0,1,2,1,0,0,0],
@@ -33,17 +32,23 @@ const BASE_MAP: number[][] = [
   [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1],
 ];
 
-interface Ghost {
-  x: number;
-  y: number;
-  startX: number;
-  startY: number;
-  dx: number;
-  dy: number;
+interface TileEntity {
+  tileX: number;
+  tileY: number;
+  targetX: number;
+  targetY: number;
+  progress: number; // 0 to 1
+  dirX: number;
+  dirY: number;
+  speed: number;
+}
+
+interface Ghost extends TileEntity {
   color: string;
   name: string;
   isFrightened: boolean;
-  speed: number;
+  startX: number;
+  startY: number;
 }
 
 export class PacmanGame implements Cartridge {
@@ -65,16 +70,21 @@ export class PacmanGame implements Cartridge {
   private isGameOver: boolean = false;
   private paused: boolean = false;
 
-  // Pacman State
-  private px: number = 9;
-  private py: number = 16;
-  private pdx: number = -1; // Start moving left automatically
-  private pdy: number = 0;
-  private desiredDx: number = -1;
-  private desiredDy: number = 0;
+  // Pacman State (Tile-Stepping Model)
+  private pacman: TileEntity = {
+    tileX: 9,
+    tileY: 16,
+    targetX: 8,
+    targetY: 16,
+    progress: 0,
+    dirX: -1,
+    dirY: 0,
+    speed: 4.8 // tiles per second
+  };
+  private desiredDirX: number = -1;
+  private desiredDirY: number = 0;
   private mouthAngle: number = 0.2;
   private mouthDir: number = 1;
-  private pacmanSpeed: number = 4.2;
 
   // Ghosts
   private ghosts: Ghost[] = [];
@@ -121,19 +131,25 @@ export class PacmanGame implements Cartridge {
   }
 
   private resetPositions() {
-    this.px = 9;
-    this.py = 16;
-    this.pdx = -1;
-    this.pdy = 0;
-    this.desiredDx = -1;
-    this.desiredDy = 0;
+    this.pacman = {
+      tileX: 9,
+      tileY: 16,
+      targetX: 8,
+      targetY: 16,
+      progress: 0,
+      dirX: -1,
+      dirY: 0,
+      speed: 4.8
+    };
+    this.desiredDirX = -1;
+    this.desiredDirY = 0;
 
-    // Spawn ghosts in the open corridor at Row 8
+    // 4 Ghosts placed at clear open corridor positions
     this.ghosts = [
-      { x: 9, y: 8, startX: 9, startY: 8, dx: -1, dy: 0, color: '#ff0033', name: '404', isFrightened: false, speed: 2.8 },
-      { x: 8, y: 8, startX: 8, startY: 8, dx: 1, dy: 0, color: '#ff69b4', name: 'LMK', isFrightened: false, speed: 2.6 },
-      { x: 10, y: 8, startX: 10, startY: 8, dx: -1, dy: 0, color: '#00ffff', name: 'MERGE', isFrightened: false, speed: 2.5 },
-      { x: 6, y: 8, startX: 6, startY: 8, dx: 1, dy: 0, color: '#ffaa00', name: 'SYNTAX', isFrightened: false, speed: 2.3 }
+      { tileX: 9, tileY: 8, targetX: 8, targetY: 8, progress: 0, dirX: -1, dirY: 0, speed: 3.2, color: '#ff0033', name: '404', isFrightened: false, startX: 9, startY: 8 },
+      { tileX: 8, tileY: 8, targetX: 9, targetY: 8, progress: 0, dirX: 1, dirY: 0, speed: 3.0, color: '#ff69b4', name: 'LMK', isFrightened: false, startX: 8, startY: 8 },
+      { tileX: 10, tileY: 8, targetX: 11, targetY: 8, progress: 0, dirX: 1, dirY: 0, speed: 2.8, color: '#00ffff', name: 'MERGE', isFrightened: false, startX: 10, startY: 8 },
+      { tileX: 6, tileY: 8, targetX: 5, targetY: 8, progress: 0, dirX: -1, dirY: 0, speed: 2.6, color: '#ffaa00', name: 'SYNTAX', isFrightened: false, startX: 6, startY: 8 }
     ];
 
     this.floppy.active = false;
@@ -141,26 +157,24 @@ export class PacmanGame implements Cartridge {
     this.ghostStreak = 0;
   }
 
-  private isPassable(x: number, y: number, isGhost = false): boolean {
-    if ((y === 10 || y === 8 || y === 12) && (x < 0 || x >= 19)) return true; // wrap tunnel
+  private isTileWalkable(x: number, y: number): boolean {
+    // Tunnel wrap rows
+    if ((y === 8 || y === 10 || y === 12) && (x < 0 || x >= 19)) return true;
     if (x < 0 || x >= 19 || y < 0 || y >= 21) return false;
-    const cell = this.map[y][x];
-    if (cell === 1) return false;
-    if (cell === 4 && !isGhost) return false; // Only ghosts can pass ghost gate
-    return true;
+    return this.map[y][x] !== 1;
   }
 
   update(deltaTime: number, input: InputState) {
     if (this.isGameOver || this.paused) return;
     const dt = Math.min(deltaTime, 0.05);
 
-    // 1. Capture desired input
-    if (input.up) { this.desiredDx = 0; this.desiredDy = -1; }
-    else if (input.down) { this.desiredDx = 0; this.desiredDy = 1; }
-    else if (input.left) { this.desiredDx = -1; this.desiredDy = 0; }
-    else if (input.right) { this.desiredDx = 1; this.desiredDy = 0; }
+    // 1. Capture desired input direction
+    if (input.up) { this.desiredDirX = 0; this.desiredDirY = -1; }
+    else if (input.down) { this.desiredDirX = 0; this.desiredDirY = 1; }
+    else if (input.left) { this.desiredDirX = -1; this.desiredDirY = 0; }
+    else if (input.right) { this.desiredDirX = 1; this.desiredDirY = 0; }
 
-    // 2. Mouth chomp animation
+    // 2. Chomp animation
     this.mouthAngle += this.mouthDir * dt * 6;
     if (this.mouthAngle > 0.45) {
       this.mouthAngle = 0.45;
@@ -180,13 +194,13 @@ export class PacmanGame implements Cartridge {
       }
     }
 
-    // 4. Update Pacman Movement
+    // 4. Update Pac-Man (Tile Engine)
     this.updatePacman(dt, input.actionA);
 
-    // 5. Update Ghosts
+    // 5. Update Ghosts (Tile Engine)
     this.updateGhosts(dt);
 
-    // 6. Check Ghost Collisions
+    // 6. Check Collisions
     this.checkCollisions();
 
     // 7. Check Level Clear
@@ -197,194 +211,184 @@ export class PacmanGame implements Cartridge {
   }
 
   private updatePacman(dt: number, isBoosted: boolean) {
-    const speed = (isBoosted ? this.pacmanSpeed * 1.35 : this.pacmanSpeed) * dt;
+    const p = this.pacman;
+    const currentSpeed = isBoosted ? p.speed * 1.35 : p.speed;
 
-    // Instant 180 reversal
-    if (this.desiredDx === -this.pdx && this.desiredDy === -this.pdy && (this.desiredDx !== 0 || this.desiredDy !== 0)) {
-      this.pdx = this.desiredDx;
-      this.pdy = this.desiredDy;
+    // Instant 180-degree reversal check:
+    // If the user presses opposite to current movement, turn back immediately!
+    if (this.desiredDirX === -p.dirX && this.desiredDirY === -p.dirY && (p.dirX !== 0 || p.dirY !== 0)) {
+      const tempX = p.tileX;
+      const tempY = p.tileY;
+      p.tileX = p.targetX;
+      p.tileY = p.targetY;
+      p.targetX = tempX;
+      p.targetY = tempY;
+      p.dirX = this.desiredDirX;
+      p.dirY = this.desiredDirY;
+      p.progress = 1 - p.progress;
     }
 
-    // Turn at intersection
-    if (this.desiredDx !== this.pdx || this.desiredDy !== this.pdy) {
-      const isAlignedX = Math.abs(this.px - Math.round(this.px)) < 0.3;
-      const isAlignedY = Math.abs(this.py - Math.round(this.py)) < 0.3;
+    // Advance progress towards target tile
+    p.progress += currentSpeed * dt;
 
-      if (isAlignedX && isAlignedY) {
-        const roundedX = Math.round(this.px);
-        const roundedY = Math.round(this.py);
-        const targetTurnX = roundedX + this.desiredDx;
-        const targetTurnY = roundedY + this.desiredDy;
+    if (p.progress >= 1) {
+      // Arrived at target tile!
+      p.tileX = p.targetX;
+      p.tileY = p.targetY;
+      p.progress = 0;
 
-        if (this.isPassable(targetTurnX, targetTurnY, false)) {
-          this.px = roundedX;
-          this.py = roundedY;
-          this.pdx = this.desiredDx;
-          this.pdy = this.desiredDy;
+      // Handle Tunnel Wrap
+      if (p.tileX < 0) p.tileX = 18;
+      if (p.tileX > 18) p.tileX = 0;
+
+      // Check eating item on this tile
+      if (p.tileX >= 0 && p.tileX < 19 && p.tileY >= 0 && p.tileY < 21) {
+        const cell = this.map[p.tileY][p.tileX];
+        if (cell === 2) {
+          this.map[p.tileY][p.tileX] = 0;
+          this.score += 10;
+          this.dotsEaten++;
+          sounds.playDot();
+          if (this.callbacks) this.callbacks.onScoreUpdate(this.score);
+
+          if (this.dotsEaten % 25 === 0 && !this.floppy.active) {
+            this.floppy.active = true;
+            this.floppy.projectIndex = Math.floor(Math.random() * PROJECTS.length);
+          }
+        } else if (cell === 3) {
+          this.map[p.tileY][p.tileX] = 0;
+          this.score += 50;
+          this.dotsEaten++;
+          this.frightenedTimer = 8.0;
+          this.ghostStreak = 0;
+          this.ghosts.forEach((g) => (g.isFrightened = true));
+          sounds.playPowerPellet();
+          if (this.callbacks) this.callbacks.onScoreUpdate(this.score);
+        }
+
+        // Collect Floppy
+        if (this.floppy.active && p.tileX === this.floppy.x && p.tileY === this.floppy.y) {
+          this.floppy.active = false;
+          this.score += 300;
+          sounds.playProjectDiscovered();
+          const unlocked = PROJECTS[this.floppy.projectIndex % PROJECTS.length];
+          if (this.callbacks) {
+            this.callbacks.onScoreUpdate(this.score);
+            this.callbacks.onProjectUnlocked(unlocked);
+          }
         }
       }
-    }
 
-    // Move in current direction
-    if (this.pdx !== 0) {
-      this.py = Math.round(this.py);
-      const nextX = this.px + this.pdx * speed;
-      const targetTileX = this.pdx > 0 ? Math.floor(this.px) + 1 : Math.ceil(this.px) - 1;
+      // Pick next target tile:
+      // First try desired direction:
+      const desiredNextX = p.tileX + this.desiredDirX;
+      const desiredNextY = p.tileY + this.desiredDirY;
 
-      if (!this.isPassable(targetTileX, this.py, false)) {
-        const limitX = Math.round(this.px);
-        if ((this.pdx > 0 && nextX >= limitX) || (this.pdx < 0 && nextX <= limitX)) {
-          this.px = limitX;
-          this.pdx = 0;
-        } else {
-          this.px = nextX;
-        }
+      if ((this.desiredDirX !== 0 || this.desiredDirY !== 0) && this.isTileWalkable(desiredNextX, desiredNextY)) {
+        p.targetX = desiredNextX;
+        p.targetY = desiredNextY;
+        p.dirX = this.desiredDirX;
+        p.dirY = this.desiredDirY;
       } else {
-        this.px = nextX;
-      }
-    } else if (this.pdy !== 0) {
-      this.px = Math.round(this.px);
-      const nextY = this.py + this.pdy * speed;
-      const targetTileY = this.pdy > 0 ? Math.floor(this.py) + 1 : Math.ceil(this.py) - 1;
+        // Try continuing in current direction:
+        const contNextX = p.tileX + p.dirX;
+        const contNextY = p.tileY + p.dirY;
 
-      if (!this.isPassable(this.px, targetTileY, false)) {
-        const limitY = Math.round(this.py);
-        if ((this.pdy > 0 && nextY >= limitY) || (this.pdy < 0 && nextY <= limitY)) {
-          this.py = limitY;
-          this.pdy = 0;
+        if ((p.dirX !== 0 || p.dirY !== 0) && this.isTileWalkable(contNextX, contNextY)) {
+          p.targetX = contNextX;
+          p.targetY = contNextY;
         } else {
-          this.py = nextY;
-        }
-      } else {
-        this.py = nextY;
-      }
-    }
-
-    // Tunnel wrap
-    if (this.px < -0.5) this.px = 18.5;
-    if (this.px > 18.5) this.px = -0.5;
-
-    // Eat Dot / Pellet
-    const currentGridX = Math.round(this.px);
-    const currentGridY = Math.round(this.py);
-
-    if (currentGridX >= 0 && currentGridX < 19 && currentGridY >= 0 && currentGridY < 21) {
-      const cell = this.map[currentGridY][currentGridX];
-      if (cell === 2) {
-        this.map[currentGridY][currentGridX] = 0;
-        this.score += 10;
-        this.dotsEaten++;
-        sounds.playDot();
-        if (this.callbacks) this.callbacks.onScoreUpdate(this.score);
-
-        if (this.dotsEaten % 25 === 0 && !this.floppy.active) {
-          this.floppy.active = true;
-          this.floppy.projectIndex = Math.floor(Math.random() * PROJECTS.length);
-        }
-      } else if (cell === 3) {
-        this.map[currentGridY][currentGridX] = 0;
-        this.score += 50;
-        this.dotsEaten++;
-        this.frightenedTimer = 8.0;
-        this.ghostStreak = 0;
-        this.ghosts.forEach((g) => (g.isFrightened = true));
-        sounds.playPowerPellet();
-        if (this.callbacks) this.callbacks.onScoreUpdate(this.score);
-      }
-
-      // Collect Floppy
-      if (this.floppy.active && currentGridX === this.floppy.x && currentGridY === this.floppy.y) {
-        this.floppy.active = false;
-        this.score += 300;
-        sounds.playProjectDiscovered();
-        const unlocked = PROJECTS[this.floppy.projectIndex % PROJECTS.length];
-        if (this.callbacks) {
-          this.callbacks.onScoreUpdate(this.score);
-          this.callbacks.onProjectUnlocked(unlocked);
+          // Wall ahead and no new direction: stop!
+          p.targetX = p.tileX;
+          p.targetY = p.tileY;
+          p.dirX = 0;
+          p.dirY = 0;
         }
       }
     }
   }
 
   private updateGhosts(dt: number) {
-    this.ghosts.forEach((ghost) => {
-      const currentSpeed = (ghost.isFrightened ? ghost.speed * 0.55 : ghost.speed) * dt;
+    for (const ghost of this.ghosts) {
+      const speed = ghost.isFrightened ? ghost.speed * 0.55 : ghost.speed;
+      ghost.progress += speed * dt;
 
-      // Move ghost
-      let nextX = ghost.x + ghost.dx * currentSpeed;
-      let nextY = ghost.y + ghost.dy * currentSpeed;
+      if (ghost.progress >= 1) {
+        ghost.tileX = ghost.targetX;
+        ghost.tileY = ghost.targetY;
+        ghost.progress = 0;
 
-      // Check if passing an intersection
-      const roundedX = Math.round(ghost.x);
-      const roundedY = Math.round(ghost.y);
-      const isNearCenter = Math.abs(ghost.x - roundedX) < currentSpeed * 1.5 && Math.abs(ghost.y - roundedY) < currentSpeed * 1.5;
+        // Tunnel Wrap
+        if (ghost.tileX < 0) ghost.tileX = 18;
+        if (ghost.tileX > 18) ghost.tileX = 0;
 
-      if (isNearCenter) {
-        ghost.x = roundedX;
-        ghost.y = roundedY;
-
-        const dirs = [
+        // Find available neighbor tiles
+        const neighbors = [
           { dx: 0, dy: -1 },
           { dx: 0, dy: 1 },
           { dx: -1, dy: 0 },
           { dx: 1, dy: 0 }
         ];
 
-        // Valid directions that aren't reversing
-        const validDirs = dirs.filter((d) => {
-          if (d.dx === -ghost.dx && d.dy === -ghost.dy) return false;
-          return this.isPassable(roundedX + d.dx, roundedY + d.dy, true);
+        // Filter out walls and the opposite direction (ghosts don't 180 unless dead-end)
+        const validNeighbors = neighbors.filter((n) => {
+          if (n.dx === -ghost.dirX && n.dy === -ghost.dirY) return false;
+          return this.isTileWalkable(ghost.tileX + n.dx, ghost.tileY + n.dy);
         });
 
-        if (validDirs.length > 0) {
-          if (!ghost.isFrightened && Math.random() < 0.5) {
-            // Chase Pacman
-            validDirs.sort((a, b) => {
-              const distA = Math.hypot(roundedX + a.dx - this.px, roundedY + a.dy - this.py);
-              const distB = Math.hypot(roundedX + b.dx - this.px, roundedY + b.dy - this.py);
+        let chosen = validNeighbors[0];
+
+        if (validNeighbors.length > 0) {
+          if (!ghost.isFrightened && Math.random() < 0.6) {
+            // Target Pac-Man
+            validNeighbors.sort((a, b) => {
+              const distA = Math.hypot(ghost.tileX + a.dx - this.pacman.tileX, ghost.tileY + a.dy - this.pacman.tileY);
+              const distB = Math.hypot(ghost.tileX + b.dx - this.pacman.tileX, ghost.tileY + b.dy - this.pacman.tileY);
               return distA - distB;
             });
-            ghost.dx = validDirs[0].dx;
-            ghost.dy = validDirs[0].dy;
+            chosen = validNeighbors[0];
           } else {
-            const picked = validDirs[Math.floor(Math.random() * validDirs.length)];
-            ghost.dx = picked.dx;
-            ghost.dy = picked.dy;
+            chosen = validNeighbors[Math.floor(Math.random() * validNeighbors.length)];
           }
         } else {
-          // If stuck, reverse
-          ghost.dx = -ghost.dx;
-          ghost.dy = -ghost.dy;
+          // Dead end: reverse
+          chosen = { dx: -ghost.dirX, dy: -ghost.dirY };
         }
 
-        nextX = ghost.x + ghost.dx * currentSpeed;
-        nextY = ghost.y + ghost.dy * currentSpeed;
+        ghost.dirX = chosen.dx;
+        ghost.dirY = chosen.dy;
+        ghost.targetX = ghost.tileX + chosen.dx;
+        ghost.targetY = ghost.tileY + chosen.dy;
       }
-
-      ghost.x = nextX;
-      ghost.y = nextY;
-
-      // Tunnel wrap
-      if (ghost.x < -0.5) ghost.x = 18.5;
-      if (ghost.x > 18.5) ghost.x = -0.5;
-    });
+    }
   }
 
   private checkCollisions() {
+    // Current interpolated positions
+    const pacX = this.pacman.tileX + (this.pacman.targetX - this.pacman.tileX) * this.pacman.progress;
+    const pacY = this.pacman.tileY + (this.pacman.targetY - this.pacman.tileY) * this.pacman.progress;
+
     for (const ghost of this.ghosts) {
-      const dist = Math.hypot(ghost.x - this.px, ghost.y - this.py);
-      if (dist < 0.7) {
+      const gx = ghost.tileX + (ghost.targetX - ghost.tileX) * ghost.progress;
+      const gy = ghost.tileY + (ghost.targetY - ghost.tileY) * ghost.progress;
+
+      const dist = Math.hypot(gx - pacX, gy - pacY);
+
+      if (dist < 0.75) {
         if (ghost.isFrightened) {
-          // Eat Ghost
-          ghost.x = ghost.startX;
-          ghost.y = ghost.startY;
+          // Eat Ghost!
+          ghost.tileX = ghost.startX;
+          ghost.tileY = ghost.startY;
+          ghost.targetX = ghost.startX;
+          ghost.targetY = ghost.startY;
+          ghost.progress = 0;
           ghost.isFrightened = false;
           this.ghostStreak++;
           this.score += 200 * Math.min(4, this.ghostStreak);
           sounds.playEatGhost(this.ghostStreak);
           if (this.callbacks) this.callbacks.onScoreUpdate(this.score);
         } else {
-          // Pacman Dies
+          // Pacman Dies!
           this.lives--;
           sounds.playExplosion();
           if (this.callbacks) this.callbacks.onLivesUpdate(this.lives);
@@ -423,7 +427,7 @@ export class PacmanGame implements Cartridge {
         const y = r * cellSize;
 
         if (cell === 1) {
-          ctx.fillStyle = '#0f172a';
+          ctx.fillStyle = '#0e1424';
           ctx.fillRect(x, y, cellSize, cellSize);
           ctx.strokeStyle = '#00f0ff';
           ctx.lineWidth = 1.5;
@@ -439,9 +443,6 @@ export class PacmanGame implements Cartridge {
           ctx.beginPath();
           ctx.arc(x + cellSize / 2, y + cellSize / 2, cellSize * 0.28, 0, Math.PI * 2);
           ctx.fill();
-        } else if (cell === 4) {
-          ctx.fillStyle = '#ff007f';
-          ctx.fillRect(x, y + cellSize * 0.4, cellSize, cellSize * 0.2);
         }
       }
     }
@@ -467,17 +468,17 @@ export class PacmanGame implements Cartridge {
     }
 
     // 3. Draw Pac-Man
-    const px = this.px * cellSize + cellSize / 2;
-    const py = this.py * cellSize + cellSize / 2;
+    const pacX = (this.pacman.tileX + (this.pacman.targetX - this.pacman.tileX) * this.pacman.progress) * cellSize + cellSize / 2;
+    const pacY = (this.pacman.tileY + (this.pacman.targetY - this.pacman.tileY) * this.pacman.progress) * cellSize + cellSize / 2;
 
     let rotation = 0;
-    if (this.pdx === 1) rotation = 0;
-    else if (this.pdx === -1) rotation = Math.PI;
-    else if (this.pdy === -1) rotation = -Math.PI / 2;
-    else if (this.pdy === 1) rotation = Math.PI / 2;
+    if (this.pacman.dirX === 1) rotation = 0;
+    else if (this.pacman.dirX === -1) rotation = Math.PI;
+    else if (this.pacman.dirY === -1) rotation = -Math.PI / 2;
+    else if (this.pacman.dirY === 1) rotation = Math.PI / 2;
 
     ctx.save();
-    ctx.translate(px, py);
+    ctx.translate(pacX, pacY);
     ctx.rotate(rotation);
 
     ctx.fillStyle = '#ffea00';
@@ -496,8 +497,8 @@ export class PacmanGame implements Cartridge {
 
     // 4. Draw Ghosts
     for (const ghost of this.ghosts) {
-      const gx = ghost.x * cellSize + cellSize / 2;
-      const gy = ghost.y * cellSize + cellSize / 2;
+      const gx = (ghost.tileX + (ghost.targetX - ghost.tileX) * ghost.progress) * cellSize + cellSize / 2;
+      const gy = (ghost.tileY + (ghost.targetY - ghost.tileY) * ghost.progress) * cellSize + cellSize / 2;
 
       ctx.save();
       ctx.translate(gx, gy);
@@ -529,8 +530,8 @@ export class PacmanGame implements Cartridge {
 
       // Pupils
       ctx.fillStyle = ghost.isFrightened ? '#ff0000' : '#000088';
-      const eyeDx = ghost.dx * r * 0.12;
-      const eyeDy = ghost.dy * r * 0.12;
+      const eyeDx = ghost.dirX * r * 0.12;
+      const eyeDy = ghost.dirY * r * 0.12;
       ctx.beginPath();
       ctx.arc(-r * 0.35 + eyeDx, -r * 0.2 + eyeDy, r * 0.14, 0, Math.PI * 2);
       ctx.arc(r * 0.35 + eyeDx, -r * 0.2 + eyeDy, r * 0.14, 0, Math.PI * 2);
