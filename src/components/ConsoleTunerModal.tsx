@@ -1,12 +1,14 @@
 import React from 'react';
-import { ConsolePresetId, CONSOLE_PRESETS } from '../types/console';
+import { ConsolePresetId, CONSOLE_PRESETS, DeckPosition } from '../types/console';
 import { sounds } from '../audio/soundManager';
-import { X, Sliders, Check, Sparkles } from 'lucide-react';
+import { X, Sliders, Check, Sparkles, Smartphone } from 'lucide-react';
 
 interface ConsoleTunerModalProps {
   isOpen: boolean;
   currentPresetId: ConsolePresetId;
   onSelectPreset: (presetId: ConsolePresetId) => void;
+  deckPosition: DeckPosition;
+  onSelectDeckPosition: (pos: DeckPosition) => void;
   onClose: () => void;
 }
 
@@ -14,6 +16,8 @@ export const ConsoleTunerModal: React.FC<ConsoleTunerModalProps> = ({
   isOpen,
   currentPresetId,
   onSelectPreset,
+  deckPosition,
+  onSelectDeckPosition,
   onClose
 }) => {
   if (!isOpen) return null;
@@ -55,7 +59,53 @@ export const ConsoleTunerModal: React.FC<ConsoleTunerModalProps> = ({
         </div>
 
         {/* Presets List */}
-        <div className="p-3 overflow-y-auto space-y-2.5">
+        <div className="p-3 overflow-y-auto space-y-3">
+          
+          {/* Deck Ergonomics Toggle */}
+          <div className="bg-[#111322] border border-[#262a42] rounded-lg p-2.5">
+            <div className="flex items-center justify-between mb-2">
+              <div className="flex items-center gap-1.5 font-pixel text-[10px] text-cyan-300">
+                <Smartphone size={13} />
+                <span>MOBILE DECK ERGONOMICS:</span>
+              </div>
+              <span className="text-[8px] text-gray-400 font-pixel">Poco/AMOLED 20:9</span>
+            </div>
+
+            <div className="grid grid-cols-2 gap-2 text-xs font-pixel">
+              <button
+                onClick={() => {
+                  sounds.playSwitchClick();
+                  onSelectDeckPosition('bottom');
+                }}
+                className={`py-1.5 px-2 rounded border text-center transition-all ${
+                  deckPosition === 'bottom'
+                    ? 'bg-[#00f0ff] text-black font-bold border-white shadow-neon-cyan'
+                    : 'bg-[#181a28] text-gray-400 border-gray-700 hover:text-white'
+                }`}
+              >
+                CLASSIC BOTTOM
+              </button>
+
+              <button
+                onClick={() => {
+                  sounds.playSwitchClick();
+                  onSelectDeckPosition('comfort');
+                }}
+                className={`py-1.5 px-2 rounded border text-center transition-all ${
+                  deckPosition === 'comfort'
+                    ? 'bg-[#ff007f] text-white font-bold border-white shadow-neon-pink'
+                    : 'bg-[#181a28] text-gray-400 border-gray-700 hover:text-white'
+                }`}
+              >
+                COMFORT MID-LIFT
+              </button>
+            </div>
+          </div>
+
+          <div className="text-[10px] font-pixel text-gray-400 pt-1">
+            SELECT RETRO CHASSIS PRESET:
+          </div>
+
           {presetList.map((p) => {
             const isSelected = p.id === currentPresetId;
             return (

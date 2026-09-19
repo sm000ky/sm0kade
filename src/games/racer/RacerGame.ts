@@ -48,6 +48,9 @@ export class RacerGame implements Cartridge {
     projectIndex: 0
   };
 
+  // Visual Juice: Turbo Exhaust Sparks & Speed lines
+  private exhaustSparks: { x: number; y: number; vx: number; vy: number; life: number }[] = [];
+
   init(_canvas: HTMLCanvasElement, _ctx: CanvasRenderingContext2D, callbacks: GameCallbacks) {
     this.callbacks = callbacks;
     this.reset();
@@ -95,6 +98,26 @@ export class RacerGame implements Cartridge {
     // Turbo boost
     const effectiveSpeed = input.actionA || input.up ? this.roadSpeed * 1.6 : this.roadSpeed;
     this.roadOffset = (this.roadOffset + effectiveSpeed * dt) % 80;
+
+    // Spawn exhaust sparks when boosting
+    if (input.actionA || input.up) {
+      this.exhaustSparks.push({
+        x: this.currentX + (Math.random() - 0.5) * 16,
+        y: 415,
+        vx: (Math.random() - 0.5) * 30,
+        vy: 120 + Math.random() * 80,
+        life: 0.3
+      });
+    }
+
+    // Update Exhaust Sparks
+    for (let i = this.exhaustSparks.length - 1; i >= 0; i--) {
+      const s = this.exhaustSparks[i];
+      s.x += s.vx * dt;
+      s.y += s.vy * dt;
+      s.life -= dt;
+      if (s.life <= 0) this.exhaustSparks.splice(i, 1);
+    }
 
     // Increment distance score
     this.score += Math.floor(effectiveSpeed * dt * 0.4);
@@ -262,6 +285,12 @@ export class RacerGame implements Cartridge {
     ctx.fillStyle = '#ffffff';
     ctx.fillRect(px - 14, py - 26, 6, 4);
     ctx.fillRect(px + 8, py - 26, 6, 4);
+
+    // Draw Turbo Exhaust Sparks
+    for (const s of this.exhaustSparks) {
+      ctx.fillStyle = '#ffaa00';
+      ctx.fillRect(s.x, s.y, 2.5, 2.5);
+    }
 
     ctx.restore();
 

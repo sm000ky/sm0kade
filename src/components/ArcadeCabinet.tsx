@@ -8,9 +8,9 @@ import { ConsoleControls } from './ConsoleControls';
 import { CRTOverlay } from './CRTOverlay';
 import { ProjectNotification } from './ProjectNotification';
 import { Project } from '../types/project';
-import { ConsolePresetId, CONSOLE_PRESETS } from '../types/console';
+import { ConsolePresetId, CONSOLE_PRESETS, DeckPosition } from '../types/console';
 import { sounds } from '../audio/soundManager';
-import { BookOpen, Layers, ChevronRight, Sliders, ExternalLink, Sparkles, Trophy, Award, Gamepad2 } from 'lucide-react';
+import { BookOpen, Layers, ChevronRight, Sliders, ExternalLink, Sparkles, Trophy, Award, Gamepad2, RotateCcw } from 'lucide-react';
 import { PROJECTS } from '../data/projects';
 
 interface ArcadeCabinetProps {
@@ -47,6 +47,16 @@ export const ArcadeCabinet: React.FC<ArcadeCabinetProps> = ({
 
   // Screen Mode: 'game' vs 'dossier' inside the CRT
   const [screenMode, setScreenMode] = useState<'game' | 'dossier'>('game');
+  const [isBooting, setIsBooting] = useState<boolean>(true);
+  const [deckPosition, setDeckPosition] = useState<DeckPosition>('bottom');
+
+  // Dismiss boot screen after 2.4s
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setIsBooting(false);
+    }, 2400);
+    return () => clearTimeout(timer);
+  }, []);
 
   // Input states
   const inputRef = useRef<InputState>({
@@ -468,8 +478,13 @@ export const ArcadeCabinet: React.FC<ArcadeCabinetProps> = ({
               </div>
             </div>
 
-            {/* CRT Display Frame: Switches between Game Canvas & Interactive Dossier */}
-            <div className="relative flex-1 min-h-0 w-full flex items-center justify-center bg-[#05070a] rounded-md overflow-hidden border border-[#23253b] my-1">
+            {/* CRT Display Frame: Switches between Game Canvas, Interactive Dossier, and BIOS Boot */}
+            <div
+              onClick={() => {
+                if (isBooting) setIsBooting(false);
+              }}
+              className="relative flex-1 min-h-0 w-full flex items-center justify-center bg-[#05070a] rounded-md overflow-hidden border border-[#23253b] my-1"
+            >
               <CRTOverlay enabled={crtEnabled} />
 
               <ProjectNotification
@@ -481,22 +496,125 @@ export const ArcadeCabinet: React.FC<ArcadeCabinetProps> = ({
                 }}
               />
 
-              {screenMode === 'game' ? (
-                <canvas
-                  ref={canvasRef}
-                  width={400}
-                  height={480}
-                  onTouchStart={handleTouchStart}
-                  onTouchEnd={handleTouchEnd}
-                  className="max-h-full max-w-full aspect-[400/480] object-contain cursor-crosshair touch-none"
-                  style={{ imageRendering: 'pixelated' }}
-                />
-              ) : (
+              {/* 1. RETRO BIOS POST SCREEN (2.4s First Impression) */}
+              {isBooting ? (
+                <div className="w-full h-full p-4 bg-black text-emerald-400 font-mono text-[11px] leading-relaxed flex flex-col justify-between select-none animate-fadeIn">
+                  <div className="space-y-1">
+                    <div className="font-pixel text-[10px] text-cyan-300">
+                      SM0KADE KERNEL v1.0.4 (C) 2026
+                    </div>
+                    <div className="text-gray-500 text-[9px]">
+                      CORE REPO: github.com/sm000ky/sm0kade
+                    </div>
+                    <div className="pt-2 text-white">
+                      MEMORY CHECK: <span className="text-emerald-400">640KB OK</span>
+                    </div>
+                    <div>
+                      PRIMARY PILOT: <span className="text-cyan-300 font-bold">sm000ky</span> [Full-Stack & Systems]
+                    </div>
+                    <div>
+                      CO-PILOT: <span className="text-[#ff007f] font-bold">Zero Two</span> [Code 002]
+                    </div>
+                    <div>
+                      DIRECTIVE: <span className="text-amber-300">1-Day-1-Project Challenge</span> [Day 1-5 LIVE]
+                    </div>
+                    <div className="text-gray-400">
+                      AUDIO: Procedural Web Audio Synth • 10 ROMs Ready
+                    </div>
+                  </div>
+
+                  <div className="pt-2 border-t border-gray-800 flex items-center justify-between text-[9px] font-pixel text-gray-400">
+                    <span className="animate-pulse text-[#00f0ff]">▶ TAP OR PRESS ANY KEY TO ENTER</span>
+                    <span className="text-gray-600">[2.4s]</span>
+                  </div>
+                </div>
+              ) : screenMode === 'dossier' ? (
                 <InteractiveDossierScreen
                   onOpenProjectModal={onOpenProjectModal}
                   onExitToGame={() => setScreenMode('game')}
                   inputState={inputRef.current}
                 />
+              ) : (
+                <>
+                  <canvas
+                    ref={canvasRef}
+                    width={400}
+                    height={480}
+                    onTouchStart={handleTouchStart}
+                    onTouchEnd={handleTouchEnd}
+                    className="max-h-full max-w-full aspect-[400/480] object-contain cursor-crosshair touch-none"
+                    style={{ imageRendering: 'pixelated' }}
+                  />
+
+                  {/* 2. GAME OVER / REBOOT INTERCEPTION SHOWCASE */}
+                  {lives <= 0 && (
+                    <div className="absolute inset-0 bg-black/90 p-4 flex flex-col justify-between items-center text-center font-mono animate-fadeIn z-20">
+                      <div className="space-y-1">
+                        <div className="font-pixel text-base text-[#ff0055] tracking-wider animate-pulse">
+                          SYSTEM REBOOTING...
+                        </div>
+                        <div className="text-[10px] text-gray-400 font-pixel">
+                          FINAL SCORE: <span className="text-cyan-300">{score.toLocaleString()} PTS</span>
+                        </div>
+                      </div>
+
+                      {/* Featured Project Showcase Card */}
+                      <div className="w-full max-w-xs bg-[#0e1122] border-2 border-cyan-400 rounded-lg p-2.5 text-left shadow-neon-cyan space-y-1.5">
+                        <div className="flex items-center justify-between text-[8px] font-pixel">
+                          <span className="text-amber-400">★ WHILE YOU WAIT, CHECK OUT:</span>
+                          <span className="text-cyan-300">DAY {featuredProject.day}</span>
+                        </div>
+
+                        <div className="font-pixel text-xs text-white font-bold">
+                          {featuredProject.title}
+                        </div>
+
+                        <p className="text-[10px] text-gray-300 line-clamp-2 leading-tight">
+                          {featuredProject.description}
+                        </p>
+
+                        <div className="pt-1 flex items-center justify-between gap-1">
+                          {featuredProject.liveUrl ? (
+                            <a
+                              href={featuredProject.liveUrl}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="px-2 py-1 bg-[#00f0ff] hover:bg-[#3bf2ff] text-black font-pixel text-[8px] rounded font-bold flex items-center gap-1 shadow-sm"
+                            >
+                              <span>LAUNCH DEMO</span>
+                              <ExternalLink size={9} />
+                            </a>
+                          ) : (
+                            <button
+                              onClick={() => onOpenProjectModal(featuredProject)}
+                              className="px-2 py-1 bg-[#00f0ff] hover:bg-[#3bf2ff] text-black font-pixel text-[8px] rounded font-bold"
+                            >
+                              <span>VIEW SPECS</span>
+                            </button>
+                          )}
+
+                          <a
+                            href={featuredProject.githubUrl}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="px-2 py-1 bg-[#1a1d30] text-gray-300 hover:text-white border border-gray-600 rounded font-pixel text-[8px]"
+                          >
+                            GITHUB
+                          </a>
+                        </div>
+                      </div>
+
+                      {/* Restart CTA */}
+                      <button
+                        onClick={handleResetGame}
+                        className="px-4 py-1.5 bg-[#ff007f] hover:bg-[#ff1a8c] text-white font-pixel text-[10px] rounded-md font-bold shadow-neon-pink flex items-center gap-1.5 transition-transform active:scale-95"
+                      >
+                        <RotateCcw size={11} />
+                        <span>RESTART GAME [START]</span>
+                      </button>
+                    </div>
+                  )}
+                </>
               )}
             </div>
 
@@ -539,14 +657,16 @@ export const ArcadeCabinet: React.FC<ArcadeCabinetProps> = ({
 
           {/* ADAPTIVE CONTROLLER: Dynamically Morphs Shape Based on Chosen Preset */}
           
-          {/* MOBILE CONTROLLER DECK */}
-          <ConsoleControls
-            preset={preset}
-            onDirTouch={handleDirButton}
-            onActionTouch={handleActionButton}
-            onSelect={handleNextCartridge}
-            onStart={handleResetGame}
-          />
+          {/* MOBILE CONTROLLER DECK (With Ergonomic Deck Position) */}
+          <div className={deckPosition === 'comfort' ? 'pb-7' : 'pb-1'}>
+            <ConsoleControls
+              preset={preset}
+              onDirTouch={handleDirButton}
+              onActionTouch={handleActionButton}
+              onSelect={handleNextCartridge}
+              onStart={handleResetGame}
+            />
+          </div>
 
           {/* DESKTOP KEYBOARD INSTRUCTION DECK */}
           <div className="w-full pt-2 hidden md:flex items-center justify-between px-3 text-gray-300 font-mono text-xs border-t border-gray-800/60 shrink-0">
@@ -592,11 +712,13 @@ export const ArcadeCabinet: React.FC<ArcadeCabinetProps> = ({
         onClose={() => setVaultOpen(false)}
       />
 
-      {/* 4. CONSOLE TUNER MODAL (8 Presets) */}
+      {/* 4. CONSOLE TUNER MODAL (8 Presets + Deck Ergonomics) */}
       <ConsoleTunerModal
         isOpen={tunerOpen}
         currentPresetId={currentPresetId}
         onSelectPreset={onSelectPreset}
+        deckPosition={deckPosition}
+        onSelectDeckPosition={setDeckPosition}
         onClose={() => setTunerOpen(false)}
       />
 

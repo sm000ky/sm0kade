@@ -11,6 +11,7 @@ export type ConsolePresetId =
 export type DpadShape = 'cross' | 'disc' | 'separate' | 'diamond';
 export type ButtonShape = 'circle' | 'square' | 'diamond' | 'hexagon';
 export type TextureStyle = 'matte' | 'woodgrain' | 'carbon' | 'translucent' | 'brushed-metal';
+export type DeckPosition = 'bottom' | 'comfort';
 
 export interface ConsolePreset {
   id: ConsolePresetId;

@@ -98,6 +98,10 @@ export class PacmanGame implements Cartridge {
   private dotsEaten: number = 0;
   private totalDots: number = 0;
 
+  // Game feel: dot eating micro-penalty & spark particles
+  private eatSlowTimer: number = 0;
+  private particles: { x: number; y: number; vx: number; vy: number; color: string; life: number }[] = [];
+
   init(_canvas: HTMLCanvasElement, _ctx: CanvasRenderingContext2D, callbacks: GameCallbacks) {
     this.callbacks = callbacks;
     this.reset();
@@ -190,6 +194,19 @@ export class PacmanGame implements Cartridge {
       }
     }
 
+    if (this.eatSlowTimer > 0) {
+      this.eatSlowTimer -= dt;
+    }
+
+    // Update Particles
+    for (let i = this.particles.length - 1; i >= 0; i--) {
+      const p = this.particles[i];
+      p.x += p.vx * dt;
+      p.y += p.vy * dt;
+      p.life -= dt;
+      if (p.life <= 0) this.particles.splice(i, 1);
+    }
+
     // Step Pacman
     this.updatePacman(dt, input.actionA);
 
@@ -208,7 +225,9 @@ export class PacmanGame implements Cartridge {
 
   private updatePacman(dt: number, isBoosted: boolean) {
     const p = this.pacman;
-    const speed = isBoosted ? p.speed * 1.35 : p.speed;
+    // Dot eating slows Pac-Man down slightly (classic arcade tension)
+    const baseSpeed = this.eatSlowTimer > 0 ? p.speed * 0.85 : p.speed;
+    const speed = isBoosted ? baseSpeed * 1.35 : baseSpeed;
 
     // Instant 180 reverse
     if (this.desiredDirX === -p.dirX && this.desiredDirY === -p.dirY && (p.dirX !== 0 || p.dirY !== 0)) {
@@ -241,6 +260,7 @@ export class PacmanGame implements Cartridge {
           this.map[p.tileY][p.tileX] = 0;
           this.score += 10;
           this.dotsEaten++;
+          this.eatSlowTimer = 0.08; // Classic 80ms chewing penalty
           sounds.playDot();
           if (this.callbacks) this.callbacks.onScoreUpdate(this.score);
 
@@ -378,6 +398,20 @@ export class PacmanGame implements Cartridge {
 
       if (Math.hypot(gx - pacX, gy - pacY) < 0.75) {
         if (ghost.isFrightened) {
+          // Spawn ghost death particle burst
+          for (let k = 0; k < 12; k++) {
+            const angle = Math.random() * Math.PI * 2;
+            const spd = 40 + Math.random() * 80;
+            this.particles.push({
+              x: gx * 18,
+              y: gy * 18,
+              vx: Math.cos(angle) * spd,
+              vy: Math.sin(angle) * spd,
+              color: '#00ffff',
+              life: 0.4
+            });
+          }
+
           ghost.tileX = ghost.startX;
           ghost.tileY = ghost.startY;
           ghost.targetX = ghost.startX;
@@ -529,6 +563,12 @@ export class PacmanGame implements Cartridge {
       ctx.fill();
 
       ctx.restore();
+    }
+
+    // 5. Draw Spark Particles
+    for (const p of this.particles) {
+      ctx.fillStyle = p.color;
+      ctx.fillRect(p.x, p.y, 2.5, 2.5);
     }
 
     ctx.restore();
