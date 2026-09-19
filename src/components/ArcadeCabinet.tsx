@@ -447,26 +447,24 @@ export const ArcadeCabinet: React.FC<ArcadeCabinetProps> = ({
         <div
           className={`w-full h-full bg-gradient-to-b ${preset.chassisBg} border-x-4 border-b-4 ${preset.chassisBorder} ${preset.chassisShadow} rounded-b-2xl p-2.5 flex flex-col justify-between overflow-hidden transition-all duration-300 relative`}
         >
-          {/* Authentic Preset Decal Stamp */}
-          <div className="absolute top-1.5 right-3 pointer-events-none opacity-40 font-pixel text-[7px] text-gray-300 tracking-widest">
-            {preset.decalText}
-          </div>
-
           {/* SCREEN BEZEL / LENS */}
           <div
             className={`w-full flex-1 min-h-0 ${preset.lensBg} border-2 ${preset.lensBorder} rounded-xl p-2 shadow-inner flex flex-col justify-between overflow-hidden crt-screen-shadow`}
           >
-            {/* Screen Top Decal */}
+            {/* Clean Screen Top Bar */}
             <div className="w-full flex items-center justify-between text-[9px] font-pixel text-gray-400 pb-1 border-b border-gray-800/80 shrink-0">
               <div className="flex items-center gap-1.5">
                 <span className="w-2 h-2 rounded-full bg-red-500 shadow-[0_0_6px_#ff0055] animate-pulse" />
                 <span className="text-gray-400 text-[8px]">POWER</span>
               </div>
-              <div className={`font-bold tracking-widest text-[8px] ${preset.lensLabelColor}`}>
-                {preset.lensLabel}
+              <div
+                className="font-pixel text-[10px] font-bold tracking-wider"
+                style={{ color: screenMode === 'dossier' ? '#00f0ff' : activeMeta.themeColor }}
+              >
+                {screenMode === 'dossier' ? '★ PORTFOLIO DOSSIER' : activeMeta.title}
               </div>
-              <div className="font-bold truncate max-w-[110px]" style={{ color: activeMeta.themeColor }}>
-                {screenMode === 'dossier' ? 'DOSSIER' : activeMeta.title}
+              <div className="text-[8px] text-gray-500 font-pixel">
+                {screenMode === 'dossier' ? 'ACTIVE' : activeMeta.genre.toUpperCase()}
               </div>
             </div>
 
