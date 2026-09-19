@@ -1,24 +1,27 @@
-# 🕹️ Sm0kade // Multi-Cartridge Retro Arcade & Portfolio Cabinet
+# 🕹️ Sm0kade // 6-in-1 Retro Arcade & Living Portfolio Cabinet
 
-> **A living retro arcade cabinet and interactive software portfolio.**
-> Built with zero-dependency procedural Web Audio synthesis, pure HTML5 Canvas 2D render loops, and a plug-and-play cartridge architecture.
+> **An interactive 8-bit multi-cartridge arcade console and living software portfolio.**
+> Built with zero-dependency procedural Web Audio synthesis, pure HTML5 Canvas 2D render loops, and a modular plug-and-play cartridge architecture.
 
 ---
 
 ## ⚡ Overview
 
-**Sm0kade** bridges classic 8-bit arcade gameplay with a high-contrast developer portfolio. Rather than burying work in static resume bullet points, visitors can play authentic arcade games, discover project floppy shards in-game, or switch seamlessly into the **Hall of Fame Dossier** view.
+**Sm0kade** bridges classic 8-bit arcade gameplay with a high-contrast developer portfolio. Rather than burying work in static resume bullet points, visitors can play 6 authentic arcade games, discover project floppy shards in-game, or switch seamlessly into the **Hall of Fame Dossier** view.
 
-### 🎮 The 3 Initial Cartridges
-1. 🟡 **DEV LABYRINTH (Pac-Man Engine):** Navigate the memory maze, collect XP pellets, avoid bug ghosts (`404`, `LMK`, `MERGE`, `SYNTAX`), and grab center floppy disks to unlock project cards.
+### 🎮 The 6 Classic Cartridges
+1. 🟡 **DEV LABYRINTH (Pac-Man Engine):** Integer tile-stepping memory maze. Eat dots & power pellets, avoid bugs (`404`, `LMK`, `MERGE`, `SYNTAX`), and collect floppy disks to unlock project cards.
 2. 👾 **BYTE INVADERS (Space Shooter):** Pilot the defense cannon, destroy waves of marching runtime errors, shoot the mystery tech UFO, and defend defensive firewalls.
 3. 🧱 **TECH BREAKOUT (Brick Smasher):** Deflect the energy ball through stacks of TypeScript, Python, Linux, and React bricks; smash golden bricks to catch dropping data shards.
+4. 🐍 **CYBER SNAKE (Matrix Snake):** Classic Nokia/arcade snake. Navigate the neon grid, gobble data nodes, dodge the perimeter, and grab portfolio floppy discs.
+5. 🧩 **BLOCK STACKER (Tetris Engine):** Standard 10x20 matrix falling tetrominoes with classic rotations, ghost piece projection, line clear multipliers, and portfolio drops.
+6. 🚀 **CYBER FLAP (Flappy Flight):** Physics-based rocket flight dodging scrolling server stacks. Addictive, high-velocity reflex test.
 
 ---
 
 ## 🛠️ Open-Code & Modular Cartridge Architecture
 
-Sm0kade is built with an **open, decoupled plugin pattern**. You never have to rewrite or hack the core cabinet to add new games or projects.
+Sm0kade is built with an **open, decoupled plugin pattern**. Adding a new game or project requires zero refactoring of existing code.
 
 ### 1. Adding a New Project
 Edit `src/data/projects.ts` and append a new entry to `PROJECTS`:
@@ -42,51 +45,9 @@ Edit `src/data/projects.ts` and append a new entry to `PROJECTS`:
 ```
 
 ### 2. Adding a New Game Cartridge
-1. Create your game class implementing the `Cartridge` interface in `src/games/yourgame/YourGame.ts`:
-```typescript
-import { Cartridge, GameCallbacks, InputState } from '../types';
-
-export class YourGame implements Cartridge {
-  id = 'yourgame';
-  title = 'YOUR GAME';
-  subtitle = 'GENRE // SUBTITLE';
-  genre = 'Arcade';
-  themeColor = '#00ff66';
-  icon = '🎯';
-  instructions = {
-    desktop: 'ARROW KEYS to move • SPACE to action',
-    mobile: 'Virtual D-Pad • Tap A'
-  };
-
-  init(canvas, ctx, callbacks) { /* setup */ }
-  update(deltaTime, input) { /* math & physics */ }
-  render(ctx, width, height) { /* draw */ }
-  destroy() { /* cleanup */ }
-  reset() { /* reset */ }
-  getScore() { return this.score; }
-  getLives() { return this.lives; }
-  isPaused() { return false; }
-  setPaused(p) { }
-}
-```
-2. Register it in `src/games/registry.ts`:
-```typescript
-import { YourGame } from './yourgame/YourGame';
-
-export const CARTRIDGES: CartridgeMetadata[] = [
-  // ... existing cartridges ...
-  {
-    id: 'yourgame',
-    title: 'YOUR GAME',
-    subtitle: 'RETRO // ENGINE',
-    genre: 'Arcade',
-    themeColor: '#00ff66',
-    icon: '🎯',
-    factory: () => new YourGame()
-  }
-];
-```
-The arcade console will automatically add it to the cartridge selection slot!
+1. Create your game class implementing the `Cartridge` interface in `src/games/yourgame/YourGame.ts`.
+2. Register it in `src/games/registry.ts`.
+The arcade console automatically adds it to the **Cartridge Vault** and the controller's `SELECT` cycle.
 
 ---
 
@@ -94,12 +55,15 @@ The arcade console will automatically add it to the cartridge selection slot!
 
 | Control | Windows / PC Keyboard | Android / Mobile Touch |
 | :--- | :--- | :--- |
-| **Direction** | `Arrow Keys` or `W / A / S / D` | 4-Way Virtual D-Pad / Swipe |
+| **Direction** | `Arrow Keys` or `W / A / S / D` | 4-Way Virtual D-Pad / Canvas Swipe |
 | **Action [A]** | `Spacebar` / `J` | Button [A] |
-| **Special [B]** | `Shift` / `K` | Button [B] |
-| **Restart Game** | `R` key | Reset icon on HUD |
+| **Boost / Alt [B]** | `Shift` / `K` | Button [B] |
+| **Quick Cartridge Cycle** | `Tab` / Bezel Button | Rubber `[SELECT]` button |
+| **Restart Game** | `R` key | Rubber `[START]` button |
+| **Cartridge Vault (6-in-1)** | Click `[VAULT]` on dock | Tap `[SLOT X/6]` pill |
 | **Insert Coin** | `Enter` key or Header button | `COIN` button on Marquee |
-| **Scanlines Toggle**| Monitor icon | Monitor icon |
+| **8-Bit BGM Toggle** | Click `BGM` on Header | Tap `BGM` on Header |
+| **Scanlines Toggle** | Monitor icon | Monitor icon |
 
 ---
 

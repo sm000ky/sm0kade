@@ -1,12 +1,12 @@
 import React, { useRef, useEffect, useState, useCallback } from 'react';
 import { Cartridge, InputState } from '../games/types';
 import { CARTRIDGES, getCartridgeById } from '../games/registry';
-import { PhysicalCartridgeSlot } from './PhysicalCartridgeSlot';
+import { CartridgeVaultModal } from './CartridgeVaultModal';
 import { CRTOverlay } from './CRTOverlay';
 import { ProjectNotification } from './ProjectNotification';
 import { Project } from '../types/project';
 import { sounds } from '../audio/soundManager';
-import { BookOpen } from 'lucide-react';
+import { BookOpen, Layers, ChevronRight } from 'lucide-react';
 
 interface ArcadeCabinetProps {
   activeCartridgeId: string;
@@ -46,6 +46,7 @@ export const ArcadeCabinet: React.FC<ArcadeCabinetProps> = ({
     actionB: false
   });
 
+  const [vaultOpen, setVaultOpen] = useState<boolean>(false);
   const [unlockedProject, setUnlockedProject] = useState<Project | null>(null);
 
   // Initialize or swap cartridge
@@ -239,15 +240,66 @@ export const ArcadeCabinet: React.FC<ArcadeCabinetProps> = ({
   };
 
   const activeMeta = getCartridgeById(activeCartridgeId) || CARTRIDGES[0];
+  const activeIndex = CARTRIDGES.findIndex((c) => c.id === activeCartridgeId);
 
   return (
     <div className="w-full h-full flex-1 flex flex-col justify-between items-center overflow-hidden select-none">
-      {/* 1. PHYSICAL CARTRIDGE SLOT (Visual Cartridge Bay) */}
-      <div className="w-full shrink-0">
-        <PhysicalCartridgeSlot
-          activeId={activeCartridgeId}
-          onSelectCartridge={onSelectCartridge}
-        />
+      
+      {/* 1. COMPACT SLEEK CARTRIDGE DOCK (Clean, No Clutter!) */}
+      <div className="w-full max-w-lg px-3 py-1.5 shrink-0">
+        <div className="bg-[#12131e] border border-[#272a42] rounded-lg px-2.5 py-1.5 flex items-center justify-between shadow-md">
+          {/* Active Cartridge Pill & Vault Trigger */}
+          <button
+            onClick={() => {
+              sounds.playSwitchClick();
+              setVaultOpen(true);
+            }}
+            className="flex items-center gap-2 px-2.5 py-1 rounded bg-[#181a2b] hover:bg-[#20233b] border border-cyan-500/40 text-left transition-all group"
+          >
+            <span className="text-base group-hover:scale-110 transition-transform">
+              {activeMeta.icon}
+            </span>
+            <div>
+              <div className="flex items-center gap-1.5">
+                <span className="text-[8px] font-pixel text-gray-500">
+                  SLOT {activeIndex + 1}/{CARTRIDGES.length}
+                </span>
+                <span
+                  className="text-[10px] font-pixel font-bold tracking-wide"
+                  style={{ color: activeMeta.themeColor }}
+                >
+                  {activeMeta.title}
+                </span>
+              </div>
+              <div className="text-[8px] text-gray-400 font-mono">
+                {activeMeta.genre} • Tap to switch
+              </div>
+            </div>
+          </button>
+
+          {/* Quick Action: Open Vault or Next ROM */}
+          <div className="flex items-center gap-1.5">
+            <button
+              onClick={() => {
+                sounds.playSwitchClick();
+                setVaultOpen(true);
+              }}
+              className="px-2 py-1 bg-[#1a1c2d] hover:bg-[#24273d] text-cyan-300 border border-gray-700 rounded font-pixel text-[8px] flex items-center gap-1"
+              title="Open Cartridge Vault"
+            >
+              <Layers size={10} />
+              <span className="hidden sm:inline">VAULT</span>
+            </button>
+
+            <button
+              onClick={handleNextCartridge}
+              className="p-1 bg-[#222538] hover:bg-[#2c3047] text-amber-400 border border-amber-500/30 rounded font-pixel text-[8px] flex items-center"
+              title="Next Game"
+            >
+              <ChevronRight size={13} />
+            </button>
+          </div>
+        </div>
       </div>
 
       {/* 2. CONSOLE HARDWARE CHASSIS (Sculpted Handheld Body) */}
@@ -261,7 +313,7 @@ export const ArcadeCabinet: React.FC<ArcadeCabinetProps> = ({
             <div className="w-full flex items-center justify-between text-[9px] font-pixel text-gray-500 pb-1 border-b border-gray-800/80 shrink-0">
               <div className="flex items-center gap-1.5">
                 <span className="w-2 h-2 rounded-full bg-red-500 shadow-[0_0_6px_#ff0055] animate-pulse" />
-                <span className="text-gray-400">BATTERY</span>
+                <span className="text-gray-400">POWER</span>
               </div>
               <div className="text-gray-400 font-bold tracking-widest text-[8px]">
                 SM0KADE COLOR
@@ -448,6 +500,14 @@ export const ArcadeCabinet: React.FC<ArcadeCabinetProps> = ({
 
         </div>
       </div>
+
+      {/* 3. CARTRIDGE VAULT MODAL (The Sleek 6-in-1 Game Selector) */}
+      <CartridgeVaultModal
+        isOpen={vaultOpen}
+        activeId={activeCartridgeId}
+        onSelectCartridge={onSelectCartridge}
+        onClose={() => setVaultOpen(false)}
+      />
     </div>
   );
 };
